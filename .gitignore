@@ -1,0 +1,23 @@
+# Entornos virtuales
+venv/
+**/venv/
+
+# Variables de entorno (contienen tus API keys y contraseñas)
+.env
+**/.env
+
+# Cachés de Python
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Archivos de estado internos del proyecto
+.bad_fixtures.json
+.rate_budget.json
+.seed_cursor_api_football.json
+
+# Streamlit
+.streamlit/
+
+# VS Code
+.vscode/
