@@ -28,8 +28,11 @@ def _get(path: str, params: dict | None = None) -> dict | None:
         detail = e.response.json().get("detail", str(e)) if e.response.content else str(e)
         st.error(f"Error del servidor: {detail}")
         return None
-    except httpx.ConnectError:
-        st.error("No se pudo conectar al backend. ¿Está corriendo `uvicorn` en localhost:8000?")
+    except httpx.ConnectError as e:
+        st.error(f"No se pudo conectar al backend en {BASE_URL}. Detalle: {e}")
+        return None
+    except httpx.TimeoutException as e:
+        st.error(f"Timeout conectando a {BASE_URL}. Detalle: {e}")
         return None
     except Exception as e:
         st.error(f"Error inesperado: {e}")
@@ -46,8 +49,11 @@ def _post(path: str, params: dict | None = None) -> dict | None:
         detail = e.response.json().get("detail", str(e)) if e.response.content else str(e)
         st.error(f"Error del servidor: {detail}")
         return None
-    except httpx.ConnectError:
-        st.error("No se pudo conectar al backend. ¿Está corriendo `uvicorn` en localhost:8000?")
+    except httpx.ConnectError as e:
+        st.error(f"No se pudo conectar al backend en {BASE_URL}. Detalle: {e}")
+        return None
+    except httpx.TimeoutException as e:
+        st.error(f"Timeout conectando a {BASE_URL}. Detalle: {e}")
         return None
     except Exception as e:
         st.error(f"Error inesperado: {e}")
