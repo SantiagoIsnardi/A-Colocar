@@ -6,8 +6,9 @@ y centraliza la URL base del backend.
 
 import httpx
 import streamlit as st
+import os
 
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000") + "/api/v1"
 
 
 def _get(path: str, params: dict | None = None) -> dict | None:
