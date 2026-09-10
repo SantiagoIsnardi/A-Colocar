@@ -19,15 +19,19 @@ st.caption(f"🔧 Debug: conectando a {BASE_URL}")
 st.caption("Análisis estadístico y detección de valor en mercados de fútbol")
 
 # Verificar conexión con el backend
+from components.api_client import BASE_URL
+
 try:
-    response = httpx.get("http://localhost:8000/health", timeout=5.0)
+    health_url = BASE_URL.replace("/api/v1", "/health")
+    response = httpx.get(health_url, timeout=15.0)
     health = response.json()
+
     if health.get("database") == "connected":
         st.success(f"✅ Backend conectado — {health.get('app')} ({health.get('environment')})")
     else:
         st.warning("⚠️ Backend responde pero la base de datos no está conectada")
-except Exception:
-    st.error("❌ No se pudo conectar al backend. Verificá que `uvicorn` esté corriendo en el puerto 8000.")
+except Exception as e:
+    st.error(f"❌ No se pudo conectar al backend en {health_url}. Detalle: {e}")
 
 st.divider()
 
