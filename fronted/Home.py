@@ -6,6 +6,8 @@ a las secciones principales.
 import httpx
 import streamlit as st
 
+from components.api_client import BASE_URL
+
 st.set_page_config(
     page_title="A Colocar",
     page_icon="⚽",
@@ -13,6 +15,7 @@ st.set_page_config(
 )
 
 st.title("⚽ A Colocar")
+st.caption(f"🔧 Debug: conectando a {BASE_URL}")
 st.caption("Análisis estadístico y detección de valor en mercados de fútbol")
 
 # Verificar conexión con el backend

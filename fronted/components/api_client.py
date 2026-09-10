@@ -6,7 +6,6 @@ y centraliza la URL base del backend.
 
 import httpx
 import streamlit as st
-import streamlit as st
 
 try:
     _backend_url = st.secrets["BACKEND_URL"]
