@@ -6,9 +6,14 @@ y centraliza la URL base del backend.
 
 import httpx
 import streamlit as st
-import os
+import streamlit as st
 
-BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000") + "/api/v1"
+try:
+    _backend_url = st.secrets["BACKEND_URL"]
+except (KeyError, FileNotFoundError):
+    _backend_url = "http://localhost:8000"
+
+BASE_URL = _backend_url + "/api/v1"
 
 
 def _get(path: str, params: dict | None = None) -> dict | None:
