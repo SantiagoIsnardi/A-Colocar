@@ -15,7 +15,13 @@ from app.db.session import AsyncSessionLocal
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     logger.info("Arrancando {} | entorno={}", settings.app_name, settings.environment)
+
+    from app.core.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+
     yield
+
+    stop_scheduler()
     logger.info("Apagando {}", settings.app_name)
 
 
