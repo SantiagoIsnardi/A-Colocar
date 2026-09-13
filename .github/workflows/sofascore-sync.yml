@@ -38,24 +38,24 @@ jobs:
           # run real (ver instrucciones abajo) y reemplazá el valor.
           - nombre: "Inglaterra - Premier League"
             league: "England Premier League"
-            season: "<COMPLETAR>"
+            season: "96668"
           - nombre: "España - La Liga"
             league: "Spain La Liga"
-            season: "<COMPLETAR>"
+            season: " 97268"
           - nombre: "Italia - Serie A"
             league: "Italy Serie A"
-            season: "<COMPLETAR>"
+            season: "95836"
           - nombre: "Alemania - Bundesliga"
             league: "Germany Bundesliga"
-            season: "<COMPLETAR>"
+            season: "97464"
           - nombre: "Francia - Ligue 1"
             league: "France Ligue 1"
-            season: "<COMPLETAR>"
+            season: "<96127>"
 
           # ─── Competencias internacionales ──────────────────────
           - nombre: "UEFA - Champions League"
             league: "UEFA Champions League"
-            season: "<COMPLETAR>" # también temporada partida
+            season: "'26/27': 96518" # también temporada partida
           - nombre: "CONMEBOL - Copa Libertadores"
             league: "CONMEBOL Copa Libertadores"
             season: "2026" # temporada anual
