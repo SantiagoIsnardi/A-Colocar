@@ -15,27 +15,41 @@ except (KeyError, FileNotFoundError):
 BASE_URL = _backend_url + "/api/v1"
 
 
-def _get(path: str, params: dict | None = None) -> dict | None:
-    """
-    GET genérico con manejo de errores centralizado. Devuelve None si
-    falla, mostrando el error en la UI en vez de romper la página.
-    """
+def _handle_response(response: httpx.Response) -> dict | None:
+    """Procesa la respuesta HTTP y muestra un error genérico si algo falla."""
     try:
-        response = httpx.get(f"{BASE_URL}{path}", params=params, timeout=15.0)
         response.raise_for_status()
         return response.json()
     except httpx.HTTPStatusError as e:
-        detail = e.response.json().get("detail", str(e)) if e.response.content else str(e)
-        st.error(f"Error del servidor: {detail}")
+        # El "detail" viene del backend y está pensado para mostrarse al
+        # usuario (ej: "Partido no encontrado"); si no viene, usamos un
+        # mensaje genérico en vez de exponer la excepción cruda.
+        detail = None
+        if e.response.content:
+            try:
+                detail = e.response.json().get("detail")
+            except ValueError:
+                detail = None
+        st.error(detail or "El servidor no pudo procesar la solicitud. Intentá de nuevo más tarde.")
         return None
-    except httpx.ConnectError as e:
-        st.error(f"No se pudo conectar al backend en {BASE_URL}. Detalle: {e}")
+
+
+def _get(path: str, params: dict | None = None) -> dict | None:
+    """
+    GET genérico con manejo de errores centralizado. Devuelve None si
+    falla, mostrando un mensaje genérico en la UI en vez de romper la página.
+    """
+    try:
+        response = httpx.get(f"{BASE_URL}{path}", params=params, timeout=15.0)
+        return _handle_response(response)
+    except httpx.ConnectError:
+        st.error("No se pudo conectar con el servidor. Probá de nuevo en unos minutos.")
         return None
-    except httpx.TimeoutException as e:
-        st.error(f"Timeout conectando a {BASE_URL}. Detalle: {e}")
+    except httpx.TimeoutException:
+        st.error("El servidor tardó demasiado en responder. Probá de nuevo.")
         return None
-    except Exception as e:
-        st.error(f"Error inesperado: {e}")
+    except Exception:
+        st.error("Ocurrió un error inesperado. Probá de nuevo más tarde.")
         return None
 
 
@@ -43,20 +57,15 @@ def _post(path: str, params: dict | None = None) -> dict | None:
     """POST genérico, mismo manejo de errores que _get."""
     try:
         response = httpx.post(f"{BASE_URL}{path}", params=params, timeout=30.0)
-        response.raise_for_status()
-        return response.json()
-    except httpx.HTTPStatusError as e:
-        detail = e.response.json().get("detail", str(e)) if e.response.content else str(e)
-        st.error(f"Error del servidor: {detail}")
+        return _handle_response(response)
+    except httpx.ConnectError:
+        st.error("No se pudo conectar con el servidor. Probá de nuevo en unos minutos.")
         return None
-    except httpx.ConnectError as e:
-        st.error(f"No se pudo conectar al backend en {BASE_URL}. Detalle: {e}")
+    except httpx.TimeoutException:
+        st.error("El servidor tardó demasiado en responder. Probá de nuevo.")
         return None
-    except httpx.TimeoutException as e:
-        st.error(f"Timeout conectando a {BASE_URL}. Detalle: {e}")
-        return None
-    except Exception as e:
-        st.error(f"Error inesperado: {e}")
+    except Exception:
+        st.error("Ocurrió un error inesperado. Probá de nuevo más tarde.")
         return None
 
 

@@ -1,0 +1,9 @@
+# Requirements para el GitHub Action de sync de Sofascore.
+# Separado de requirements.txt a propósito: ScraperFC trae Selenium +
+# botasaurus (automatización de navegador), que Render nunca necesita
+# para servir la API. Mantenerlo afuera evita inflar el build/deploy
+# del Web Service con dependencias pesadas que no usa.
+
+-r requirements.txt
+
+ScraperFC>=4.5.0,<5.0.0

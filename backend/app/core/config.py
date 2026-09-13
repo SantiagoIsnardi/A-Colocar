@@ -4,13 +4,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "football-analyzer"
-    environment: str = "development"
-    debug: bool = True
-    log_level: str = "DEBUG"
+    environment: str = "production"
+    debug: bool = False
+    log_level: str = "INFO"
 
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
+    postgres_user: str = ""
+    postgres_password: str = ""
+    postgres_db: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     database_url: str
