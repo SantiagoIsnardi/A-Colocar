@@ -1,0 +1,33 @@
+name: Debug Sofascore Response
+
+# TEMPORAL — solo para diagnosticar por qué get_valid_seasons() devuelve
+# un JSON sin la clave "seasons" cuando corre en el runner de GitHub.
+# Borrar este archivo una vez resuelto el problema real.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar ScraperFC
+        run: pip install ScraperFC
+
+      - name: Ver respuesta cruda de la API de Sofascore
+        run: |
+          python -c "
+          from ScraperFC.utils.botasaurus_getters import botasaurus_browser_get_json
+          import json
+          # 155 = ID de Sofascore para Argentina Liga Profesional
+          url = 'https://api.sofascore.com/api/v1/unique-tournament/155/seasons/'
+          r = botasaurus_browser_get_json(url)
+          print('TIPO:', type(r))
+          print('CONTENIDO CRUDO:')
+          print(json.dumps(r, indent=2)[:3000])
+          "
+      
