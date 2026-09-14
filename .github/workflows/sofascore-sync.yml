@@ -14,7 +14,7 @@ on:
       max_matches:
         description: "Límite de partidos a procesar por competencia (vacío = sin límite)"
         required: false
-        default: "20"
+        default: "50"
 
 jobs:
   sync:
@@ -87,4 +87,4 @@ jobs:
           python -m app.cli.seed_sofascore_upcoming \
             "${{ matrix.league }}" \
             "${{ matrix.season }}" \
-            "${{ github.event.inputs.max_matches || '20' }}"
+            "${{ github.event.inputs.max_matches || '50' }}"
