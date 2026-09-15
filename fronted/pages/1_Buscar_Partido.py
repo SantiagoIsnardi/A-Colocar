@@ -10,8 +10,12 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import streamlit as st
 from components import api_client
+from components.theme import inject_background
+from components.display import render_result
 
 st.set_page_config(page_title="Buscar Partido", layout="wide")
+inject_background()
+
 st.title("Buscar Partido")
 
 st.info(
@@ -33,18 +37,17 @@ if match_id:
         if st.button("Consultar predicciones existentes", key="get_pred"):
             result = api_client.get_predictions(match_id, market="goals")
             if result:
-                st.json(result)
+                render_result(result)
 
         if st.button("Generar nueva predicción", key="gen_pred"):
             with st.spinner("Calculando..."):
                 result = api_client.generate_goal_predictions(match_id)
             if result:
-                st.json(result)
+                render_result(result)
 
     with col2:
         st.markdown("### Cuotas de mercado")
         if st.button("Consultar cuotas", key="get_odds"):
             result = api_client.get_match_odds(match_id, market="goals")
             if result:
-                st.json(result)
-                
+                render_result(result)
