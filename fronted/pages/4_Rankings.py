@@ -12,8 +12,8 @@ import pandas as pd
 import streamlit as st
 from components import api_client
 
-st.set_page_config(page_title="Rankings", page_icon="🏆", layout="wide")
-st.title("🏆 Rankings de Oportunidades")
+st.set_page_config(page_title="Rankings", layout="wide")
+st.title("Rankings de Oportunidades")
 
 MERCADOS_LABEL = {
     "goals": "Goles",

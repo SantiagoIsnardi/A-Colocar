@@ -14,8 +14,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from components import api_client
 
-st.set_page_config(page_title="Predicciones", page_icon="📊", layout="wide")
-st.title("📊 Predicciones")
+st.set_page_config(page_title="Predicciones", layout="wide")
+st.title("Predicciones")
 
 MERCADOS = {
     "goals": "Goles",

@@ -11,8 +11,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 import streamlit as st
 from components import api_client
 
-st.set_page_config(page_title="Buscar Partido", page_icon="🔍", layout="wide")
-st.title("🔍 Buscar Partido")
+st.set_page_config(page_title="Buscar Partido", layout="wide")
+st.title("Buscar Partido")
 
 st.info(
     "Esta versión inicial requiere que conozcas el `match_id` directamente "

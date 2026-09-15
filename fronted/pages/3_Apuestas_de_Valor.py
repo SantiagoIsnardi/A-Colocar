@@ -13,8 +13,8 @@ import pandas as pd
 import streamlit as st
 from components import api_client
 
-st.set_page_config(page_title="Value Bets", page_icon="💰", layout="wide")
-st.title("💰 Apuestas de Valor")
+st.set_page_config(page_title="Value Bets", layout="wide")
+st.title("Apuestas de Valor")
 
 tab1, tab2 = st.tabs(["Por partido", "Ranking general"])
 
