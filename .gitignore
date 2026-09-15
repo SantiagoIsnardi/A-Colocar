@@ -16,8 +16,11 @@ __pycache__/
 .rate_budget.json
 .seed_cursor_api_football.json
 
-# Streamlit
-.streamlit/
+# Streamlit: el tema (config.toml) sí va al repo, los secrets no
+**/.streamlit/secrets.toml
 
 # VS Code
 .vscode/
+
+# Logs locales (crecen indefinidamente, no van al repo)
+backend/scripts/sofascore_sync_log.txt
