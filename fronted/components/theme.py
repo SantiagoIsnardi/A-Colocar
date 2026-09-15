@@ -63,8 +63,9 @@ def inject_home_background() -> None:
             background:
                 linear-gradient(rgba(6, 12, 9, 0.72), rgba(6, 12, 9, 0.72)),
                 url("data:image/{mime};base64,{encoded}");
-            background-size: 100% auto;
-            background-position: center top;
+            background-size: cover;
+            background-position: center 20%;
+            background-repeat: no-repeat;
             background-attachment: fixed;
         }}
         </style>
