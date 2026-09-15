@@ -182,7 +182,7 @@ class SofascoreIngestionService:
         A diferencia de ingest_league_season, no busca estadísticas —
         un partido que no se jugó no tiene stats que traer.
         """
-        raw_matches = self.client.get_match_dicts(year=year, league=league)
+        raw_matches = self.client.get_upcoming_match_dicts(year=year, league=league)
         upcoming = [
             m for m in raw_matches
             if m.get("status", {}).get("type") == "notstarted"
