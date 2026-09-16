@@ -36,3 +36,18 @@ class MatchRepository:
             stmt = stmt.where(Match.status == status)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_by_date(self, target_date) -> list[Match]:
+        """Partidos cuya fecha (match_date) cae en un día calendario dado."""
+        from datetime import datetime, timedelta
+
+        start = datetime.combine(target_date, datetime.min.time())
+        end = start + timedelta(days=1)
+
+        stmt = (
+            select(Match)
+            .where(Match.match_date >= start, Match.match_date < end)
+            .order_by(Match.match_date.asc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

@@ -8,6 +8,44 @@ from app.db.session import get_db
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
+@router.get("/by-date")
+async def get_matches_by_date(
+    date: str | None = Query(default=None, description="YYYY-MM-DD, default hoy"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Partidos programados/jugados en una fecha dada. Sin `date`, usa hoy."""
+    from datetime import date as date_cls
+
+    from sqlalchemy import select
+
+    from app.db.models.team import Team
+
+    target = date_cls.fromisoformat(date) if date else date_cls.today()
+
+    repo = MatchRepository(db)
+    matches = await repo.get_by_date(target)
+
+    team_ids = {m.home_team_id for m in matches} | {m.away_team_id for m in matches}
+    teams_result = await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))
+    team_names = dict(teams_result.all())
+
+    return {
+        "date": target.isoformat(),
+        "count": len(matches),
+        "matches": [
+            {
+                "id": m.id,
+                "home_team": team_names.get(m.home_team_id, f"#{m.home_team_id}"),
+                "away_team": team_names.get(m.away_team_id, f"#{m.away_team_id}"),
+                "league": m.league,
+                "match_date": m.match_date.isoformat(),
+                "status": m.status,
+                "home_score": m.home_score,
+                "away_score": m.away_score,
+            }
+            for m in matches
+        ],
+    }
 
 @router.get("/team/{team_id}")
 async def get_matches_by_team(
