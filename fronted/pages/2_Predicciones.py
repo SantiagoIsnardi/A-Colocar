@@ -13,8 +13,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from components import api_client
+from components.theme import inject_background
+from components.display import render_result
 
 st.set_page_config(page_title="Predicciones", layout="wide")
+inject_background()
 st.title("Predicciones")
 
 MERCADOS = {
@@ -49,7 +52,7 @@ def _graficar_probabilidades(predicciones: list[dict], mercado_label: str):
             y=porcentajes,
             text=[f"{p}%" for p in porcentajes],
             textposition="outside",
-            marker_color="#1f77b4",
+            marker_color="#39D98A",
         )
     ])
     fig.update_layout(
@@ -58,6 +61,9 @@ def _graficar_probabilidades(predicciones: list[dict], mercado_label: str):
         yaxis_range=[0, 105],
         showlegend=False,
         height=400,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_color="#EAF2EC",
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -73,9 +79,9 @@ if match_id:
 
     col_a, col_b = st.columns(2)
     with col_a:
-        generar = st.button("🔄 Generar nueva predicción", use_container_width=True)
+        generar = st.button("Generar nueva predicción", use_container_width=True)
     with col_b:
-        consultar = st.button("📋 Consultar predicción existente", use_container_width=True)
+        consultar = st.button("Consultar predicción existente", use_container_width=True)
 
     resultado = None
 
@@ -111,7 +117,7 @@ if match_id:
 
         if confianza == "low":
             st.warning(
-                "⚠️ Confianza baja: la muestra histórica disponible para uno o ambos equipos "
+                "Confianza baja: la muestra histórica disponible para uno o ambos equipos "
                 "es chica. Interpretá estos números con cautela."
             )
 
@@ -127,4 +133,4 @@ if match_id:
 
         if "context" in resultado:
             with st.expander("Ver contexto del partido (forma, H2H, árbitro, motivación)"):
-                st.json(resultado["context"])
+                render_result(resultado["context"])
