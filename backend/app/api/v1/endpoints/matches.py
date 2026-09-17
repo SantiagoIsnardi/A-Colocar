@@ -67,6 +67,10 @@ async def get_matches_by_team(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Historial o próximos partidos de un equipo, según el filtro de status."""
+    from sqlalchemy import select
+
+    from app.db.models.team import Team
+
     repo = MatchRepository(db)
 
     match_status = None
@@ -78,6 +82,10 @@ async def get_matches_by_team(
 
     matches = await repo.get_by_team(team_id=team_id, status=match_status, limit=limit)
 
+    team_ids = {m.home_team_id for m in matches} | {m.away_team_id for m in matches}
+    teams_result = await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))
+    team_names = dict(teams_result.all())
+
     return {
         "team_id": team_id,
         "status_filter": status,
@@ -85,15 +93,14 @@ async def get_matches_by_team(
         "matches": [
             {
                 "id": m.id,
-                "home_team_id": m.home_team_id,
-                "away_team_id": m.away_team_id,
+                "home_team": team_names.get(m.home_team_id, f"#{m.home_team_id}"),
+                "away_team": team_names.get(m.away_team_id, f"#{m.away_team_id}"),
                 "league": m.league,
                 "season": m.season,
                 "match_date": m.match_date.isoformat(),
                 "status": m.status,
                 "home_score": m.home_score,
                 "away_score": m.away_score,
-                "source": m.source,
             }
             for m in matches
         ],

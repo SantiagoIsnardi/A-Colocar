@@ -126,3 +126,13 @@ def get_match(match_id: int) -> dict | None:
 def get_calibration_summary(model_version: str | None = None) -> dict | None:
     params = {"model_version": model_version} if model_version else None
     return _get("/calibration/summary", params=params)
+
+def search_teams(query: str, limit: int = 10) -> dict | None:
+    return _get("/teams/search", params={"q": query, "limit": limit})
+
+
+def get_matches_by_team(team_id: int, status: str | None = None, limit: int = 20) -> dict | None:
+    params = {"limit": limit}
+    if status:
+        params["status"] = status
+    return _get(f"/matches/team/{team_id}", params=params)

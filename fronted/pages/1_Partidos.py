@@ -45,11 +45,45 @@ if resultado:
 
 st.divider()
 st.markdown("### Buscar un partido puntual")
-st.caption("Si no aparece en la tabla de arriba (fecha futura o pasada distinta), buscalo acá por su ID.")
+st.caption("Si no aparece en la tabla de arriba (fecha futura o pasada), buscalo por nombre de equipo.")
 
-match_id = st.number_input("Match ID", min_value=1, step=1, value=None)
+nombre = st.text_input("Nombre del equipo", placeholder="Ej: River, Barcelona, Boca...")
 
-if match_id:
-    partido = api_client.get_match(int(match_id))
-    if partido:
-        render_result(partido, title=f"Partido #{match_id}")
+if nombre and len(nombre) >= 2:
+    resultado_busqueda = api_client.search_teams(nombre)
+    equipos = resultado_busqueda.get("teams", []) if resultado_busqueda else []
+
+    if not equipos:
+        st.info(f"No se encontró ningún equipo que coincida con \"{nombre}\".")
+    else:
+        opciones = {f"{e['name']} ({e['country'] or '—'})": e["id"] for e in equipos}
+        seleccion = st.selectbox("Equipo encontrado", options=list(opciones.keys()))
+        equipo_id = opciones[seleccion]
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            filtro_status = st.selectbox(
+                "Filtrar por",
+                options=[None, "scheduled", "finished"],
+                format_func=lambda x: {"None": "Todos", "scheduled": "Próximos", "finished": "Jugados"}.get(str(x), x),
+            )
+        with col_b:
+            st.write("")  # espaciador visual
+
+        partidos_equipo = api_client.get_matches_by_team(equipo_id, status=filtro_status)
+
+        if partidos_equipo and partidos_equipo.get("matches"):
+            tabla_equipo = [
+                {
+                    "ID": p["id"],
+                    "Local": p["home_team"],
+                    "Visitante": p["away_team"],
+                    "Liga": p["league"],
+                    "Fecha": p["match_date"][:10],
+                    "Estado": p["status"],
+                }
+                for p in partidos_equipo["matches"]
+            ]
+            st.dataframe(tabla_equipo, use_container_width=True, hide_index=True)
+        else:
+            st.info("Ese equipo no tiene partidos cargados con ese filtro.")
