@@ -37,7 +37,7 @@ st.divider()
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.page_link("pages/1_Buscar_Partido.py", label="Buscar Partido", use_container_width=True)
+        st.page_link("pages/1_Partidos.py", label="Partidos", use_container_width=True)
 with col2:
     st.page_link("pages/2_Predicciones.py", label="Predicciones", use_container_width=True)
 with col3:

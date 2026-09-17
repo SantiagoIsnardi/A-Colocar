@@ -112,3 +112,9 @@ def start_full_analysis(match_id: int) -> dict | None:
 
 def get_analysis_status(task_id: str) -> dict | None:
     return _get(f"/analysis/{task_id}")
+
+
+# ─── Partidos ──────────────────────────────────────────────────
+def get_matches_by_date(date: str | None = None) -> dict | None:
+    params = {"date": date} if date else None
+    return _get("/matches/by-date", params=params)
