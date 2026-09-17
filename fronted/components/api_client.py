@@ -118,3 +118,11 @@ def get_analysis_status(task_id: str) -> dict | None:
 def get_matches_by_date(date: str | None = None) -> dict | None:
     params = {"date": date} if date else None
     return _get("/matches/by-date", params=params)
+
+def get_match(match_id: int) -> dict | None:
+    return _get(f"/matches/{match_id}")
+
+# ─── Calibración ───────────────────────────────────────────────
+def get_calibration_summary(model_version: str | None = None) -> dict | None:
+    params = {"model_version": model_version} if model_version else None
+    return _get("/calibration/summary", params=params)

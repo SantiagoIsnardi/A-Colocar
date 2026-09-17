@@ -242,3 +242,59 @@ class SofascoreIngestionService:
             "matches_skipped": matches_skipped,
             "match_ids": match_ids,
         }
+
+    async def sync_match_statuses(self, league: str, year: str) -> dict:
+        """
+        Actualiza status y resultado de partidos YA CARGADOS que pasaron a
+        'finished' (o cambiaron de estado) desde que se insertaron —
+        típicamente partidos que entraron como 'scheduled' vía
+        ingest_upcoming_matches y ya se jugaron. No inserta partidos nuevos.
+        """
+        raw_matches = self.client.get_match_dicts(year=year, league=league)
+
+        updated = 0
+        unchanged = 0
+        not_found = 0
+
+        for raw in raw_matches:
+            ext_id = str(raw["id"])
+            existing_match = await self.match_repo.get_by_external_id(ext_id, "sofascore")
+
+            if not existing_match:
+                not_found += 1
+                continue
+
+            new_status = _SOFASCORE_STATUS_MAP.get(
+                raw.get("status", {}).get("type", ""), existing_match.status
+            )
+            new_home_score = raw.get("homeScore", {}).get("current")
+            new_away_score = raw.get("awayScore", {}).get("current")
+
+            changed = (
+                existing_match.status != new_status
+                or existing_match.home_score != new_home_score
+                or existing_match.away_score != new_away_score
+            )
+
+            if changed:
+                existing_match.status = new_status
+                existing_match.home_score = new_home_score
+                existing_match.away_score = new_away_score
+                updated += 1
+            else:
+                unchanged += 1
+
+        await self.session.commit()
+
+        logger.info(
+            "Sync status Sofascore | liga={} temporada={} | actualizados={} | sin_cambios={} | no_encontrados={}",
+            league, year, updated, unchanged, not_found,
+        )
+
+        return {
+            "league": league,
+            "year": year,
+            "matches_updated": updated,
+            "matches_unchanged": unchanged,
+            "matches_not_found": not_found,
+        }
