@@ -78,8 +78,13 @@ def _label(key: str) -> str:
     return _LABELS.get(key, key.replace("_", " ").capitalize())
 
 
-def _fmt(value) -> str:
+_PERCENT_KEYS = {"accuracy_simple", "avg_clv_percentage"}
+
+
+def _fmt(value, key: str = "") -> str:
     if isinstance(value, float):
+        if key in _PERCENT_KEYS:
+            return f"{value * 100:.1f}%"
         return f"{value:.3f}" if abs(value) < 10 else f"{value:.1f}"
     if isinstance(value, bool):
         return "Sí" if value else "No"
@@ -114,7 +119,7 @@ def render_result(data: dict, title: str | None = None) -> None:
         cols = st.columns(min(len(scalars), 4))
         for i, (key, value) in enumerate(scalars.items()):
             with cols[i % len(cols)]:
-                st.metric(_label(key), _fmt(value))
+                                st.metric(_label(key), _fmt(value, key))
 
     for key, value in texts.items():
         st.caption(f"**{_label(key)}:** {value}")

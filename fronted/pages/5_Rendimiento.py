@@ -35,8 +35,8 @@ if resumen:
         st.markdown(
             """
             **Cómo leer esto:**
-            - **Brier score promedio** — más cerca de 0 es mejor (0 = predicción perfecta, 0.25 = tan bueno como tirar una moneda, 1 = siempre se equivocó con confianza).
-            - **Accuracy simple** — de las predicciones donde el modelo dijo "más probable que sí" (≥50%), qué porcentaje se cumplió.
-            - **CLV promedio** — solo para las que tenían una apuesta de valor asociada con cuota de cierre disponible; positivo significa que conseguiste mejor cuota que el cierre del mercado (buena señal de que la apuesta tenía valor real, más allá de si ganó o perdió esa vez puntual).
+            - **Precisión del modelo** — más cerca de 0 es mejor (0 = predicción perfecta, 0.25 = tan bueno como tirar una moneda, 1 = siempre se equivocó con confianza).
+            - **Aciertos** — de las predicciones donde el modelo dijo "más probable que sí" (≥50%), qué porcentaje se cumplió.
+            - **Valor vs. cierre de mercado** — solo para las que tenían una apuesta de valor asociada con cuota de cierre disponible; positivo significa que conseguiste mejor cuota que el cierre del mercado (buena señal de que la apuesta tenía valor real, más allá de si ganó o perdió esa vez puntual).
             """
         )
