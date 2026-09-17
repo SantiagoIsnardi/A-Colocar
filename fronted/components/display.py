@@ -22,10 +22,12 @@ _LABELS = {
     "away_attack_multiplier": "Mult. ataque visitante",
     "match_id": "Partido",
     "market": "Mercado",
+
     # Forma
     "form_score": "Forma",
     "avg_points_per_match": "Puntos prom./partido",
     "sufficient": "Muestra suficiente",
+
     # Head to head
     "home_wins": "Victorias local",
     "draws": "Empates",
@@ -33,16 +35,19 @@ _LABELS = {
     "home_win_rate": "% victorias local",
     "avg_home_goals": "Goles prom. local",
     "avg_away_goals": "Goles prom. visitante",
+
     # Motivación
     "trend_score": "Tendencia",
     "recent_avg_points": "Puntos prom. (reciente)",
     "older_avg_points": "Puntos prom. (anterior)",
+
     # Árbitro
     "available": "Datos disponibles",
     "referee_name": "Árbitro",
     "avg_yellow_cards_per_match": "Amarillas prom./partido",
     "avg_red_cards_per_match": "Rojas prom./partido",
     "avg_fouls_per_match": "Faltas prom./partido",
+
     # Contexto general
     "home_form": "Forma local",
     "away_form": "Forma visitante",
@@ -50,6 +55,14 @@ _LABELS = {
     "referee_profile": "Perfil del árbitro",
     "home_motivation": "Motivación local",
     "away_motivation": "Motivación visitante",
+
+    # Calibración / Rendimiento
+    "sample_size": "Predicciones evaluadas",
+    "avg_brier_score": "Precisión del modelo (Brier)",
+    "accuracy_simple": "Aciertos",
+    "avg_clv_percentage": "Valor vs. cierre de mercado (CLV)",
+    "clv_sample_size": "Casos con CLV calculado",
+    "model_version_filter": "Versión del modelo",
 }
 
 # Campos de texto libre (pueden ser largos): se muestran aparte, nunca
