@@ -34,7 +34,7 @@ if resultado:
                 "Local": p["home_team"],
                 "Visitante": p["away_team"],
                 "Liga": p["league"],
-                "Hora": p["match_date"][11:16],
+                "Hora": p["match_time_arg"],
                 "Estado": p["status"],
             }
             for p in partidos

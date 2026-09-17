@@ -37,13 +37,8 @@ class MatchRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_date(self, target_date) -> list[Match]:
-        """Partidos cuya fecha (match_date) cae en un día calendario dado."""
-        from datetime import datetime, timedelta
-
-        start = datetime.combine(target_date, datetime.min.time())
-        end = start + timedelta(days=1)
-
+    async def get_by_date_range(self, start, end) -> list[Match]:
+        """Partidos cuya fecha (match_date, en UTC) cae dentro de [start, end)."""
         stmt = (
             select(Match)
             .where(Match.match_date >= start, Match.match_date < end)

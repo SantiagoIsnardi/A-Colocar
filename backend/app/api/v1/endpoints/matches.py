@@ -10,20 +10,30 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 
 @router.get("/by-date")
 async def get_matches_by_date(
-    date: str | None = Query(default=None, description="YYYY-MM-DD, default hoy"),
+    date: str | None = Query(default=None, description="DD-MM-YYYY, default hoy (horario Argentina)"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Partidos programados/jugados en una fecha dada. Sin `date`, usa hoy."""
-    from datetime import date as date_cls
+    """Partidos programados/jugados en una fecha dada, en horario Argentina."""
+    from datetime import date as date_cls, datetime, timedelta
+    from zoneinfo import ZoneInfo
 
     from sqlalchemy import select
 
     from app.db.models.team import Team
 
-    target = date_cls.fromisoformat(date) if date else date_cls.today()
+    ARG_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
+
+    target = date_cls.fromisoformat(date) if date else datetime.now(ARG_TZ).date()
+
+    # Límites del día en horario argentino, convertidos a UTC para filtrar
+    # contra match_date (que se guarda en UTC).
+    start_arg = datetime.combine(target, datetime.min.time(), tzinfo=ARG_TZ)
+    end_arg = start_arg + timedelta(days=1)
+    start_utc = start_arg.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+    end_utc = end_arg.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
     repo = MatchRepository(db)
-    matches = await repo.get_by_date(target)
+    matches = await repo.get_by_date_range(start_utc, end_utc)
 
     team_ids = {m.home_team_id for m in matches} | {m.away_team_id for m in matches}
     teams_result = await db.execute(select(Team.id, Team.name).where(Team.id.in_(team_ids)))
@@ -38,7 +48,9 @@ async def get_matches_by_date(
                 "home_team": team_names.get(m.home_team_id, f"#{m.home_team_id}"),
                 "away_team": team_names.get(m.away_team_id, f"#{m.away_team_id}"),
                 "league": m.league,
-                "match_date": m.match_date.isoformat(),
+                "match_date_utc": m.match_date.isoformat(),
+                "match_time_arg": m.match_date.replace(tzinfo=ZoneInfo("UTC"))
+                    .astimezone(ARG_TZ).strftime("%H:%M"),
                 "status": m.status,
                 "home_score": m.home_score,
                 "away_score": m.away_score,
