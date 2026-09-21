@@ -20,7 +20,29 @@ inject_background()
 
 st.title("Partidos")
 
+_sync_info = api_client.get_last_sync()
+if _sync_info and _sync_info.get("sofascore"):
+    from datetime import datetime, timezone
+
+    _last = datetime.fromisoformat(_sync_info["sofascore"])
+    _delta = datetime.now(timezone.utc) - _last
+    _horas = _delta.total_seconds() / 3600
+
+    if _horas < 1:
+        _texto = f"hace {int(_delta.total_seconds() / 60)} min"
+    elif _horas < 48:
+        _texto = f"hace {int(_horas)} hs"
+    else:
+        _texto = f"hace {int(_horas / 24)} días"
+
+    _alerta = _horas > 30  # más de ~30hs sin sync es señal de que algo falló
+    if _alerta:
+        st.warning(f"⚠️ Sofascore no sincroniza hace {_texto} — puede que el status/resultado de hoy no esté al día.")
+    else:
+        st.caption(f"Datos de Sofascore actualizados {_texto}")
+
 fecha = st.date_input("Fecha", value=date.today())
+
 
 resultado = api_client.get_matches_by_date(fecha.isoformat())
 

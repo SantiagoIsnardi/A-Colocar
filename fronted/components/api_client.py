@@ -136,3 +136,6 @@ def get_matches_by_team(team_id: int, status: str | None = None, limit: int = 20
     if status:
         params["status"] = status
     return _get(f"/matches/team/{team_id}", params=params)
+
+def get_last_sync() -> dict | None:
+    return _get("/matches/last-sync")

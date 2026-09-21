@@ -133,3 +133,18 @@ async def get_match(match_id: int, db: AsyncSession = Depends(get_db)) -> dict:
         "away_score": match.away_score,
         "source": match.source,
     }
+
+@router.get("/last-sync")
+async def get_last_sync(db: AsyncSession = Depends(get_db)) -> dict:
+    """Cuándo se actualizó por última vez cada fuente de datos."""
+    from sqlalchemy import func as sql_func, select
+
+    from app.db.models.match import Match
+
+    result = await db.execute(
+        select(Match.source, sql_func.max(Match.updated_at)).group_by(Match.source)
+    )
+    return {
+        source: last_update.isoformat() if last_update else None
+        for source, last_update in result.all()
+    }
