@@ -38,3 +38,9 @@ class PredictionRepository:
                 latest_by_line[line] = row
 
         return sorted(latest_by_line.values(), key=lambda p: float(p.line))
+
+    async def get_existing_match_market_pairs(self) -> set[tuple[int, str]]:
+        """Todos los pares (match_id, market) que ya tienen al menos una predicción guardada."""
+        stmt = select(Prediction.match_id, Prediction.market).distinct()
+        result = await self.session.execute(stmt)
+        return set(result.all())

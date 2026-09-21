@@ -56,6 +56,23 @@ async def _run_resolve_predictions() -> None:
         logger.error("Scheduler | error en resolve_predictions: {}", exc)
 
 
+async def _run_generate_missing_predictions() -> None:
+    """
+    Auto-genera predicciones (5 mercados) para partidos 'scheduled' que
+    todavía no las tengan. Corre después del sync de Sofascore (12:00
+    ART / 15:00 UTC) para agarrar los partidos recién cargados ese día.
+    """
+    from app.db.session import AsyncSessionLocal
+    from app.services.prediction.auto_predictor import AutoPredictor
+
+    try:
+        predictor = AutoPredictor(AsyncSessionLocal)
+        result = await predictor.generate_missing()
+        logger.info("Scheduler | generate_missing_predictions completado: {}", result)
+    except Exception as exc:
+        logger.error("Scheduler | error en generate_missing_predictions: {}", exc)
+
+
 def start_scheduler() -> None:
     """Registra los jobs y arranca el scheduler. Se llama una vez al iniciar la app."""
     scheduler.add_job(
@@ -68,6 +85,12 @@ def start_scheduler() -> None:
         _run_resolve_predictions,
         trigger=CronTrigger(hour=7, minute=0),  # después del sync, 7:00 UTC
         id="resolve_predictions",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _run_generate_missing_predictions,
+        trigger=CronTrigger(hour=16, minute=0),  # 13:00 ART, después del sync de Sofascore
+        id="generate_missing_predictions",
         replace_existing=True,
     )
     scheduler.start()

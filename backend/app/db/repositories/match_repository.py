@@ -46,3 +46,9 @@ class MatchRepository:
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_scheduled(self) -> list[Match]:
+        """Todos los partidos con status 'scheduled', de cualquier fuente."""
+        stmt = select(Match).where(Match.status == MatchStatus.scheduled)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
