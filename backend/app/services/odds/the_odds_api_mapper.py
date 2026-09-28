@@ -9,11 +9,17 @@ import re
 from datetime import datetime, timedelta
 
 
-def _normalize_name(name: str) -> str:
-    """'FC Barcelona' -> 'barcelona'. Quita prefijos/sufijos comunes de club."""
-    cleaned = re.sub(r"\b(FC|CF|AFC|SC|AC|CD|Club|de|do|the)\b", "", name, flags=re.IGNORECASE)
-    return re.sub(r"[^a-z0-9]", "", cleaned.lower())
+import unicodedata
 
+
+def _normalize_name(name: str) -> str:
+    """'1. FC Union Berlin' -> 'unionberlin'. Saca tildes, números sueltos y sufijos de club."""
+    name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    cleaned = re.sub(
+        r"\b(FC|CF|AFC|SC|AC|CD|SK|SV|BC|Club|de|do|the|1\d{3})\b",
+        "", name, flags=re.IGNORECASE,
+    )
+    return re.sub(r"[^a-z0-9]", "", cleaned.lower())
 
 class TheOddsApiMapper:
 
