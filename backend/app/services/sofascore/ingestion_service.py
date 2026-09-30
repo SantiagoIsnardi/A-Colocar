@@ -216,7 +216,7 @@ class SofascoreIngestionService:
                 source="sofascore",
                 home_team_id=home_id,
                 away_team_id=away_id,
-                league=raw.get("tournament", {}).get("name", league),
+                league=league,
                 season=year,
                 match_date=match_date,
                 venue=(raw.get("venue") or {}).get("name"),

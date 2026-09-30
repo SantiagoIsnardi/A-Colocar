@@ -119,7 +119,7 @@ def render_result(data: dict, title: str | None = None) -> None:
         cols = st.columns(min(len(scalars), 4))
         for i, (key, value) in enumerate(scalars.items()):
             with cols[i % len(cols)]:
-                                st.metric(_label(key), _fmt(value, key))
+                 st.metric(_label(key), _fmt(value, key))
 
     for key, value in texts.items():
         st.caption(f"**{_label(key)}:** {value}")
