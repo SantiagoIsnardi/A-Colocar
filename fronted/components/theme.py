@@ -39,7 +39,7 @@ def inject_background() -> None:
 def inject_home_background() -> None:
     """
     Foto real de fondo (fronted/assets/background.jpg o .png) con tinte verdoso sutil,
-    ajustada completa al centro sin recortarse, con oscurecido para legibilidad.
+    ajustada para cubrir toda la pantalla sin dejar franjas grises.
     """
     image_path = None
     for ext in ("jpg", "jpeg", "png"):
@@ -58,12 +58,10 @@ def inject_home_background() -> None:
     st.markdown(
         f"""
         <style>
-        /* Fondo base oscuro verdoso para rellenar bordes si la pantalla es más ancha */
         .stApp {{
             background-color: #060c09 !important;
         }}
 
-        /* Imagen completa con tinte verdoso nocturno (estilo cancha) */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -72,10 +70,12 @@ def inject_home_background() -> None:
             width: 100vw;
             height: 100vh;
             background-image: 
-                linear-gradient(rgba(6, 18, 12, 0.78), rgba(6, 18, 12, 0.78)),
+                linear-gradient(rgba(6, 18, 12, 0.82), rgba(6, 18, 12, 0.82)),
                 url("data:image/{mime};base64,{encoded}");
-            background-size: contain;
-            background-position: center;
+            /* 'cover' asegura que no haya franjas vacías. 
+               'center center' prioriza el centro de la imagen al recortar los bordes excedentes */
+            background-size: cover;
+            background-position: center center;
             background-repeat: no-repeat;
             filter: grayscale(80%) contrast(110%);
             pointer-events: none;
