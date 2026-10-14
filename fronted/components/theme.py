@@ -39,7 +39,7 @@ def inject_background() -> None:
 def inject_home_background() -> None:
     """
     Fondo de doble capa para el Home:
-    1. Capa trasera: Imagen estirada y muy desenfocada para que no queden franjas vacías a los costados.
+    1. Capa trasera: Imagen estirada y muy desenfocada.
     2. Capa frontal: Imagen al 100% (contain) para que no se corte absolutamente nada del collage.
     """
     image_path = None
@@ -59,12 +59,13 @@ def inject_home_background() -> None:
     st.markdown(
         f"""
         <style>
-        /* Fondo base oscuro por seguridad */
+        /* Hacemos transparente el fondo de la app para que deje ver las capas traseras */
         .stApp {{
-            background-color: #060c09 !important;
+            background: transparent !important;
+            background-color: transparent !important;
         }}
 
-        /* CAPA 1 (Fondo): Imagen en 'cover' muy desenfocada para rellenar la pantalla entera */
+        /* CAPA 1 (Fondo): Imagen en 'cover' muy desenfocada */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -72,18 +73,19 @@ def inject_home_background() -> None:
             left: 0;
             width: 100vw;
             height: 100vh;
+            background-color: #060c09; /* El color base va en la capa más profunda */
             background-image: 
                 linear-gradient(rgba(6, 18, 12, 0.85), rgba(6, 18, 12, 0.85)),
                 url("data:image/{mime};base64,{encoded}");
             background-size: cover;
             background-position: center;
             filter: grayscale(80%) blur(25px) brightness(0.4);
-            transform: scale(1.1); /* Evita que el blur deje bordes blancos */
+            transform: scale(1.1); /* Expande el blur para que no deje bordes blancos */
             pointer-events: none;
             z-index: -2;
         }}
 
-        /* CAPA 2 (Frente): Imagen en 'contain' para ver el collage completo sin cortes */
+        /* CAPA 2 (Frente): Imagen en 'contain' completa y nítida */
         .stApp::after {{
             content: "";
             position: fixed;
