@@ -29,3 +29,11 @@ class TeamRepository:
         await self.session.flush()
         await self.session.refresh(team)
         return team
+
+    async def get_all_id_names(self) -> dict[str, int]:
+        """
+        Devuelve un diccionario {nombre_equipo: id_db} con todos los equipos.
+        """
+        stmt = select(Team.name, Team.id)
+        result = await self.session.execute(stmt)
+        return {name: team_id for name, team_id in result.all()}

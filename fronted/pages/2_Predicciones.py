@@ -68,7 +68,8 @@ def _graficar_probabilidades(predicciones: list[dict], mercado_label: str):
     st.plotly_chart(fig, use_container_width=True)
 
 
-match_id = st.number_input("Match ID", min_value=1, step=1, value=None)
+default_match_id = st.session_state.get("selected_match_id", None)
+match_id = st.number_input("Match ID", min_value=1, step=1, value=default_match_id)
 
 if match_id:
     mercado = st.selectbox(

@@ -1,38 +1,85 @@
 """
-Cliente para Sofascore vía ScraperFC. A diferencia de los clientes HTTP
-directos (API-Football, football-data.org), este envuelve una librería
-que usa Selenium + Chrome real para scrapear — cada llamada es más lenta
-(varios segundos) porque abre/cierra un navegador, pero no tiene límite
-diario de requests ni restricción de temporada.
-
-Requiere: pip install ScraperFC, y Google Chrome instalado en el sistema.
+Cliente para Sofascore.
+Versión Definitiva (Navegación Directa): Evitamos usar `fetch` inyectado porque 
+los navegadores bloquean el envío de cookies (Cloudflare) entre subdominios.
+En su lugar, hacemos que Chrome navegue físicamente a la URL del JSON, extraiga 
+el texto de la pantalla y lo procese. ¡A prueba de balas!
 """
 
 import ScraperFC as sfc
 from ScraperFC.sofascore import API_PREFIX, comps
 from botasaurus.browser import browser
-import json as _json
-
-
-def _botasaurus_browser_get_json(url: str) -> dict:
-    """
-    Igual que ScraperFC.utils.botasaurus_browser_get_json, pero con
-    close_on_crash=True — si no, un fallo deja el navegador pausado
-    esperando que alguien apriete Enter, lo cual cuelga para siempre
-    cualquier corrida desatendida (Task Scheduler).
-    """
-    @browser(headless=True, block_images_and_css=True, output=None,
-             create_error_logs=False, close_on_crash=True)
-    def _get(driver, url):
-        driver.get(url)
-        return _json.loads(driver.page_text)
-
-    return _get(url)
-
-
-botasaurus_browser_get_json = _botasaurus_browser_get_json
-
 from app.core.logging import logger
+import json
+
+STATIC_SEASON_IDS = {
+    "Argentina Liga Profesional": {"2026": 87913},
+    "England Premier League": {"26/27": 96668},    
+    "Germany Bundesliga": {"26/27": 97464},
+    "Spain La Liga": {"26/27": 97268},
+    "Italy Serie A": {"26/27": 95836},
+    "France Ligue 1": {"26/27": 96127},
+    "UEFA Champions League": {"26/27": 96518},
+    "CONMEBOL Copa Libertadores": {"2026": 87760}
+}
+
+@browser(headless=False, block_images_and_css=False, output=None, create_error_logs=False, close_on_crash=True, wait_for_complete_page_load=False)
+def _fetch_paginated_events(driver, data):
+    tournament_id = data["tournament_id"]
+    season_id = data["season_id"]
+    endpoint = data["endpoint"]
+    
+    logger.info("Chrome VISIBLE abierto. Entrando a la portada para validar sesión...")
+    driver.get("https://www.sofascore.com")
+    driver.sleep(3) # Tiempo vital para que Cloudflare nos dé la cookie de acceso
+    
+    matches = []
+    page = 0
+    while True:
+        url = f"{API_PREFIX}/unique-tournament/{tournament_id}/season/{season_id}/events/{endpoint}/{page}"
+        logger.debug(f"Navegando a JSON: {url}")
+        
+        # Navegamos físicamente a la API para forzar el envío de cookies
+        driver.get(url)
+        driver.sleep(1.5) # Damos tiempo a que se dibuje el texto en pantalla
+        
+        # Extraemos el texto puro de la pantalla (Chrome suele envolver los JSON en <pre>)
+        text = driver.run_js("return document.body.innerText;")
+        
+        try:
+            response = json.loads(text)
+        except json.JSONDecodeError:
+            logger.error(f"Sofascore devolvió texto no-JSON en pág {page}. Fin de paginación.")
+            break
+            
+        if "error" in response:
+            logger.error(f"Sofascore devolvió error en pág {page}: {response['error']}")
+            break
+            
+        if "events" not in response or len(response["events"]) == 0:
+            break
+            
+        matches += response["events"]
+        page += 1
+        
+    return matches
+
+# Parcheamos la función interna por si la llama para estadísticas
+def _botasaurus_single_fetch(url: str) -> dict:
+    @browser(headless=False, block_images_and_css=False, output=None, create_error_logs=False, close_on_crash=True, wait_for_complete_page_load=False)
+    def _fetch(driver, data):
+        driver.get("https://www.sofascore.com")
+        driver.sleep(3)
+        driver.get(url)
+        driver.sleep(1.5)
+        text = driver.run_js("return document.body.innerText;")
+        try:
+            return json.loads(text)
+        except Exception:
+            return {}
+    return _fetch()
+
+sfc.utils.botasaurus_browser_get_json = _botasaurus_single_fetch
 
 
 class SofascoreClient:
@@ -41,48 +88,41 @@ class SofascoreClient:
         self._client = sfc.Sofascore()
 
     def get_valid_seasons(self, league: str) -> dict[str, int]:
-        return self._client.get_valid_seasons(league)
+        if league in STATIC_SEASON_IDS:
+            return STATIC_SEASON_IDS[league]
+        return {}
 
     def get_match_dicts(self, year: str, league: str) -> list[dict]:
-        """
-        Partidos YA JUGADOS de una temporada (endpoint events/last/ de
-        Sofascore). Para partidos programados/futuros usar
-        get_upcoming_match_dicts en su lugar.
-        """
-        matches = self._client.get_match_dicts(year=year, league=league)
+        valid_seasons = self.get_valid_seasons(league)
+        if year not in valid_seasons:
+            raise ValueError(f"Temporada '{year}' inválida para '{league}'. Válidas: {list(valid_seasons.keys())}")
+        
+        matches = _fetch_paginated_events(data={
+            "tournament_id": comps[league]["SOFASCORE"],
+            "season_id": valid_seasons[year],
+            "endpoint": "last"
+        })
+        
+        # Seguro contra fallos del navegador
+        if matches is None:
+            matches = []
+
         logger.debug("Sofascore | liga={} temporada={} | partidos_jugados={}", league, year, len(matches))
         return matches
 
     def get_upcoming_match_dicts(self, year: str, league: str) -> list[dict]:
-        """
-        Partidos programados (aún no jugados) de una temporada.
-
-        ScraperFC.Sofascore.get_match_dicts() solo pega contra
-        events/last/{i} (resultados históricos) — nunca devuelve
-        partidos con status "notstarted". No hay método público en la
-        librería para events/next/{i}, así que replicamos acá el mismo
-        patrón de paginación que usa la librería internamente, pero
-        contra el endpoint correcto.
-        """
-        valid_seasons = self._client.get_valid_seasons(league)
+        valid_seasons = self.get_valid_seasons(league)
         if year not in valid_seasons:
-            raise ValueError(
-                f"Temporada '{year}' inválida para '{league}'. "
-                f"Válidas: {list(valid_seasons.keys())}"
-            )
-        season_id = valid_seasons[year]
-        tournament_id = comps[league]["SOFASCORE"]
-
-        matches: list[dict] = []
-        page = 0
-        while True:
-            response = botasaurus_browser_get_json(
-                f"{API_PREFIX}/unique-tournament/{tournament_id}/season/{season_id}/events/next/{page}"
-            )
-            if "events" not in response:
-                break
-            matches += response["events"]
-            page += 1
+            raise ValueError(f"Temporada '{year}' inválida para '{league}'. Válidas: {list(valid_seasons.keys())}")
+            
+        matches = _fetch_paginated_events(data={
+            "tournament_id": comps[league]["SOFASCORE"],
+            "season_id": valid_seasons[year],
+            "endpoint": "next"
+        })
+        
+        if matches is None:
+            matches = []
 
         logger.debug("Sofascore | liga={} temporada={} | partidos_programados={}", league, year, len(matches))
         return matches

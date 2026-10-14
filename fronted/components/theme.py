@@ -38,9 +38,8 @@ def inject_background() -> None:
 
 def inject_home_background() -> None:
     """
-    Foto real de fondo (fronted/assets/background.jpg o .png), con un
-    overlay oscuro encima para que el texto siga siendo legible. Si no
-    encuentra el archivo, cae de vuelta al degradado CSS.
+    Foto real de fondo (fronted/assets/background.jpg o .png) con tinte verdoso sutil,
+    ajustada completa al centro sin recortarse, con oscurecido para legibilidad.
     """
     image_path = None
     for ext in ("jpg", "jpeg", "png"):
@@ -59,15 +58,28 @@ def inject_home_background() -> None:
     st.markdown(
         f"""
         <style>
+        /* Fondo base oscuro verdoso para rellenar bordes si la pantalla es más ancha */
         .stApp {{
-            background:
-                linear-gradient(rgba(6, 12, 9, 0.72), rgba(6, 12, 9, 0.72)),
+            background-color: #060c09 !important;
+        }}
+
+        /* Imagen completa con tinte verdoso nocturno (estilo cancha) */
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(rgba(6, 18, 12, 0.78), rgba(6, 18, 12, 0.78)),
                 url("data:image/{mime};base64,{encoded}");
-            background-size: 100% auto;
-            background-position: center top;
+            background-size: contain;
+            background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-color: #060c09
+            filter: grayscale(80%) contrast(110%);
+            pointer-events: none;
+            z-index: 0;
         }}
         </style>
         """,
