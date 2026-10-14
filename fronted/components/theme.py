@@ -39,8 +39,8 @@ def inject_background() -> None:
 def inject_home_background() -> None:
     """
     Fondo de doble capa para el Home:
-    1. Capa trasera: Imagen estirada y muy desenfocada.
-    2. Capa frontal: Imagen al 100% (contain) para que no se corte absolutamente nada del collage.
+    1. Capa trasera (blur): Imagen expandida (cover) y muy desenfocada para los costados.
+    2. Capa frontal (nítida): Imagen centrada al 100% (contain) sin recortes.
     """
     image_path = None
     for ext in ("jpg", "jpeg", "png"):
@@ -59,13 +59,11 @@ def inject_home_background() -> None:
     st.markdown(
         f"""
         <style>
-        /* Hacemos transparente el fondo de la app para que deje ver las capas traseras */
         .stApp {{
-            background: transparent !important;
-            background-color: transparent !important;
+            background: #060c09 !important;
         }}
 
-        /* CAPA 1 (Fondo): Imagen en 'cover' muy desenfocada */
+        /* CAPA 1 (Fondo lateral): Imagen ampliada y difuminada para rellenar los costados */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -73,19 +71,17 @@ def inject_home_background() -> None:
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #060c09; /* El color base va en la capa más profunda */
             background-image: 
-                linear-gradient(rgba(6, 18, 12, 0.85), rgba(6, 18, 12, 0.85)),
+                linear-gradient(rgba(6, 18, 12, 0.75), rgba(6, 18, 12, 0.75)),
                 url("data:image/{mime};base64,{encoded}");
             background-size: cover;
             background-position: center;
-            filter: grayscale(80%) blur(25px) brightness(0.4);
-            transform: scale(1.1); /* Expande el blur para que no deje bordes blancos */
+            filter: grayscale(80%) blur(20px) brightness(0.35);
             pointer-events: none;
             z-index: -2;
         }}
 
-        /* CAPA 2 (Frente): Imagen en 'contain' completa y nítida */
+        /* CAPA 2 (Frente central): Imagen completa sin cortes */
         .stApp::after {{
             content: "";
             position: fixed;
@@ -94,7 +90,6 @@ def inject_home_background() -> None:
             width: 100vw;
             height: 100vh;
             background-image: 
-                linear-gradient(rgba(6, 18, 12, 0.70), rgba(6, 18, 12, 0.70)),
                 url("data:image/{mime};base64,{encoded}");
             background-size: contain;
             background-position: center;
