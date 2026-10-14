@@ -38,8 +38,9 @@ def inject_background() -> None:
 
 def inject_home_background() -> None:
     """
-    Foto real de fondo (fronted/assets/background.jpg o .png) con tinte verdoso sutil,
-    ajustada para cubrir toda la pantalla sin dejar franjas grises.
+    Fondo de doble capa para el Home:
+    1. Capa trasera: Imagen estirada y muy desenfocada para que no queden franjas vacías a los costados.
+    2. Capa frontal: Imagen al 100% (contain) para que no se corte absolutamente nada del collage.
     """
     image_path = None
     for ext in ("jpg", "jpeg", "png"):
@@ -58,10 +59,12 @@ def inject_home_background() -> None:
     st.markdown(
         f"""
         <style>
+        /* Fondo base oscuro por seguridad */
         .stApp {{
             background-color: #060c09 !important;
         }}
 
+        /* CAPA 1 (Fondo): Imagen en 'cover' muy desenfocada para rellenar la pantalla entera */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -70,16 +73,33 @@ def inject_home_background() -> None:
             width: 100vw;
             height: 100vh;
             background-image: 
-                linear-gradient(rgba(6, 18, 12, 0.82), rgba(6, 18, 12, 0.82)),
+                linear-gradient(rgba(6, 18, 12, 0.85), rgba(6, 18, 12, 0.85)),
                 url("data:image/{mime};base64,{encoded}");
-            /* 'cover' asegura que no haya franjas vacías. 
-               'center center' prioriza el centro de la imagen al recortar los bordes excedentes */
             background-size: cover;
-            background-position: center center;
+            background-position: center;
+            filter: grayscale(80%) blur(25px) brightness(0.4);
+            transform: scale(1.1); /* Evita que el blur deje bordes blancos */
+            pointer-events: none;
+            z-index: -2;
+        }}
+
+        /* CAPA 2 (Frente): Imagen en 'contain' para ver el collage completo sin cortes */
+        .stApp::after {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(rgba(6, 18, 12, 0.70), rgba(6, 18, 12, 0.70)),
+                url("data:image/{mime};base64,{encoded}");
+            background-size: contain;
+            background-position: center;
             background-repeat: no-repeat;
             filter: grayscale(80%) contrast(110%);
             pointer-events: none;
-            z-index: 0;
+            z-index: -1;
         }}
         </style>
         """,
