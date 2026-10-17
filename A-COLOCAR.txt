@@ -1,0 +1,41 @@
+¿Qué es y para qué sirve?
+ZonaMetrica es una plataforma automatizada de análisis estadístico predictivo para fútbol.
+Su objetivo principal no es solo adivinar quién va a ganar un partido, sino encontrar ineficiencias en el mercado de apuestas (Value Bets).
+
+Sirve para:
+
+Predecir la probabilidad real de que ocurran eventos en un partido (goles, córners, tarjetas, faltas, tiros).
+
+Comparar esas probabilidades propias contra las cuotas que ofrecen las casas de apuestas.
+
+Encontrar "Edges" (ventajas matemáticas) donde la casa de apuestas está pagando más de lo que debería.
+
+Calcular cuánto dinero apostar de forma segura usando el Criterio de Kelly.
+
+Medir a largo plazo si el modelo realmente es rentable superando a la línea de cierre (CLV).
+
+2. ¿Cómo funciona? (La Arquitectura)
+Tu sistema está dividido en módulos altamente especializados y sigue principios de Arquitectura Limpia (Clean Architecture) con FastAPI, SQLAlchemy y PostgreSQL:
+
+Ingesta Híbrida Inteligente: Usas 4 fuentes distintas (API-Football, football-data.org, Sofascore, The Odds API). En lugar de atarte a una sola, orquestas las llamadas: usas football-data porque es gratis para Europa, API-Football para Sudamérica, The Odds API para cuotas puras, y Sofascore (vía scraping con un navegador automatizado para saltar Cloudflare) para sacar estadísticas raras (faltas, tiros) que las APIs gratuitas no dan.
+
+Motor de Predicción (Prediction Engine): Aquí está la magia. No usas promedios simples. Usas:
+
+Distribución de Poisson para modelar eventos.
+
+Corrección Dixon-Coles: Un modelo académico de 1997 que corrige el fallo de Poisson en marcadores bajos (0-0, 1-0). Esto demuestra un conocimiento estadístico profundo.
+
+Decaimiento Temporal (Time Decay): Le das más peso a los partidos recientes usando una vida media (half-life). Un partido de ayer vale más que uno de hace 5 meses.
+
+Contexto: Ajustas los multiplicadores según el historial local/visitante, la racha reciente y el perfil tarjetero del árbitro.
+
+Buscador de Valor (Value Finder) y Devigging: Antes de comparar tus predicciones con las cuotas, le quitas el margen de ganancia a la casa de apuestas (Devig) para obtener la probabilidad implícita "limpia". Esto es vital y algo que los amateurs ignoran.
+
+Calibración y Auditoría (Calibration Engine): No te mientes a ti mismo. El sistema evalúa sus propias predicciones pasadas usando el Brier Score (para ver qué tan bien calibrado está el modelo) y el Closing Line Value (CLV) (para confirmar si lograste ganarle al mercado antes de que las cuotas bajaran).
+
+3. ¿Quiénes lo usarían y cómo?
+Apostadores Profesionales / Sindicatos (Syndicates): Lo usarían como su herramienta principal de trabajo diario. Entrarían a la interfaz (el frontend de Streamlit que mencionaste), irían directo a "Apuestas de Valor", ordenarían por el mayor "Edge", revisarían el tamaño de apuesta sugerido (Kelly fraction) y colocarían la apuesta en su broker.
+
+Analistas de Datos / Tipsters: Lo usarían para justificar sus pronósticos. Podrían usar la sección de "Estadísticas" para ver frecuencias y decir: "El modelo de ZonaMetrica le da un 65% de probabilidad al +2.5 goles basándose en la forma reciente y la corrección Dixon-Coles".
+
+Uso personal (Tú): Te levantas, el Task Scheduler ya corrió a las 6:00 am, sincronizó los partidos terminados de ayer, auditó tus aciertos/errores, trajo las cuotas de hoy y te dejó lista una bandeja con las 5 o 6 apuestas matemáticas rentables del día.

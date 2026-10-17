@@ -179,6 +179,54 @@ class IngestionService:
             "match_ids": match_ids,
         }
 
+    async def ingest_upcoming_by_league(self, league_id: int, season: int, next_n: int = 15) -> dict:
+        """Ingiere la próxima jornada completa de una liga. Ideal para agendar partidos futuros."""
+        fixtures_result = await self.client.get_upcoming_by_league(league_id, season, next_n)
+        fixtures = fixtures_result.get("response", [])
+        
+        created = 0
+        skipped = 0
+        match_ids = []
+
+        for fixture in fixtures:
+            ext_id = str(fixture["fixture"]["id"])
+            existing = await self.match_repo.get_by_external_id(ext_id, "api_football")
+            if existing:
+                skipped += 1
+                match_ids.append(existing.id)
+                continue
+
+            home_data = fixture["teams"]["home"]
+            away_data = fixture["teams"]["away"]
+
+            home_team = await self._get_or_create_team(home_data)
+            away_team = await self._get_or_create_team(away_data)
+
+            match = self.mapper.match_from_fixture(
+                fixture=fixture,
+                home_team_id=home_team.id,
+                away_team_id=away_team.id,
+            )
+            match = await self.match_repo.create(match)
+            match_ids.append(match.id)
+            created += 1
+
+        await self.session.commit()
+        
+        logger.info(
+            "Ingesta próximos partidos (API-Football) | liga={} | creados={} | omitidos={}",
+            league_id, created, skipped,
+        )
+        
+        return {
+            "league_id": league_id,
+            "season": season,
+            "fixtures_created": created,
+            "fixtures_skipped": skipped,
+            "match_ids": match_ids,
+        }   
+
+
     async def ingest_statistics_for_football_data_match(self, match_id: int) -> dict:
         """
         NO USAR EN PRODUCCIÓN — método experimental del Sprint 10, descartado

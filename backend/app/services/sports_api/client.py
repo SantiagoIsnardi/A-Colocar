@@ -82,3 +82,14 @@ class APIFootballClient:
 
     async def close(self) -> None:
         await self._client.aclose()
+
+    async def get_upcoming_by_league(self, league_id: int, season: int, next_n: int = 15) -> dict:
+        """Trae la próxima jornada de una liga específica gastando solo 1 request."""
+        return await self._get(
+            "/fixtures",
+            params={
+                "league": league_id,
+                "season": season,
+                "next": next_n
+            }
+        ) 
