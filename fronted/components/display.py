@@ -351,7 +351,7 @@ def render_match_context(context: dict) -> None:
             <style>
             /* Achica el texto principal de st.metric para evitar que se corte */
             [data-testid="stMetricValue"] {
-                font-size: 1.4rem !important; 
+                font-size: 1.2rem !important; 
             }
             </style>
             """,
