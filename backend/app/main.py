@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from sqlalchemy import text
@@ -37,6 +38,23 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
+    """
+    Endpoint ultraliviano para keepalive de Render Free Tier.
+    Devuelve status + timestamp sin tocar la base de datos.
+    Usar con servicios de monitoreo externos (ping cada ≤14 min).
+    """
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/health/db", tags=["health"])
+async def health_check_db() -> dict:
+    """
+    Diagnóstico completo: verifica conectividad con la base de datos.
+    No usar para keepalive — tiene latencia de red a Neon.
+    """
     db_status = "connected"
     try:
         async with AsyncSessionLocal() as session:
@@ -50,5 +68,5 @@ async def health_check() -> dict:
         "app": settings.app_name,
         "environment": settings.environment,
         "database": db_status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    
