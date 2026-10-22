@@ -20,16 +20,20 @@ st.title("A Colocar")
 
 st.caption("Análisis estadístico y detección de valor en mercados de fútbol")
 
-# Verificar conexión con el backend
+# Verificar conexión con el backend y base de datos
 try:
-    health_url = BASE_URL.replace("/api/v1", "/health")
+    health_url = BASE_URL.replace("/api/v1", "/health/db")
     response = httpx.get(health_url, timeout=15.0)
     health = response.json()
 
     if health.get("database") == "connected":
-        st.success(f"✅ Backend conectado — {health.get('app')} ({health.get('environment')})")
-    else:
+        st.success(f"✅ Backend conectado — {health.get('app', 'A-Colocar')} ({health.get('environment', 'production')})")
+    elif health.get("database") == "unavailable":
         st.warning("⚠️ Backend responde pero la base de datos no está conectada")
+    elif health.get("status") == "ok":
+        st.success(f"✅ Backend conectado — {health.get('app', 'A-Colocar')}")
+    else:
+        st.warning("⚠️ Estado del backend desconocido")
 except Exception:
     st.error("❌ No se pudo conectar con el servidor. Probá de nuevo en unos minutos.")
 
