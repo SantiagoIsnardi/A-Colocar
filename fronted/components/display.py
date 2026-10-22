@@ -301,7 +301,11 @@ def render_match_context(context: dict) -> None:
         with c4:
             g_home = h2h.get("avg_home_goals", 0.0)
             g_away = h2h.get("avg_away_goals", 0.0)
-            st.metric("Goles promedio", f"{g_home:.1f} - {g_away:.1f}", help="Promedio de goles por partido entre ambos en esta sede.")
+            st.metric(
+                "Goles promedio",
+                f"{g_home:.1f} - {g_away:.1f}", 
+                help="Promedio de goles por partido entre ambos en esta sede."
+            )
 
         if not h2h_suff:
             st.caption(f"Muestra reducida: Basado únicamente en {h2h_sample} enfrentamiento(s).")
@@ -345,15 +349,4 @@ def render_match_context(context: dict) -> None:
             )
         ref_sample = ref.get("sample_size", 0)
         st.caption(f"Estadísticas calculadas sobre {ref_sample} partidos dirigidos registrados.")
-
-        st.markdown(
-            """
-            <style>
-            /* Achica el texto principal de st.metric para evitar que se corte */
-            [data-testid="stMetricValue"] {
-                font-size: 1.2rem !important; 
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+        
