@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from components import api_client
 from components.theme import inject_background
-from components.display import render_match_context, render_result
+from fronted.components.display import render_match_context, render_result
 
 st.set_page_config(page_title="Predicciones", layout="wide")
 inject_background()
