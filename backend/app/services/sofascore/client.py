@@ -1,16 +1,18 @@
 """
 Cliente para Sofascore.
-Versión Definitiva (Navegación Directa): Evitamos usar `fetch` inyectado porque 
-los navegadores bloquean el envío de cookies (Cloudflare) entre subdominios.
-En su lugar, hacemos que Chrome navegue físicamente a la URL del JSON, extraiga 
-el texto de la pantalla y lo procese. ¡A prueba de balas!
+Usa sesión activa de Chrome con Botasaurus para superar Cloudflare,
+y consume el endpoint moderno https://www.sofascore.com/api/v1 (el antiguo
+api.sofascore.com devuelve 403 Forbidden por bloqueo de subdominio).
 """
 
+import json
 import ScraperFC as sfc
-from ScraperFC.sofascore import API_PREFIX, comps
+from ScraperFC.sofascore import comps
 from botasaurus.browser import browser
 from app.core.logging import logger
-import json
+
+SOFASCORE_API_PREFIX = "https://www.sofascore.com/api/v1"
+sfc.sofascore.API_PREFIX = SOFASCORE_API_PREFIX
 
 STATIC_SEASON_IDS = {
     "Argentina Liga Profesional": {"2026": 87913},
@@ -23,6 +25,7 @@ STATIC_SEASON_IDS = {
     "CONMEBOL Copa Libertadores": {"2026": 87760}
 }
 
+
 @browser(headless=False, block_images_and_css=False, output=None, create_error_logs=False, close_on_crash=True, wait_for_complete_page_load=False)
 def _fetch_paginated_events(driver, data):
     tournament_id = data["tournament_id"]
@@ -31,27 +34,35 @@ def _fetch_paginated_events(driver, data):
     
     logger.info("Chrome VISIBLE abierto. Entrando a la portada para validar sesión...")
     driver.get("https://www.sofascore.com")
-    driver.sleep(3) # Tiempo vital para que Cloudflare nos dé la cookie de acceso
+    driver.sleep(3)  # Tiempo vital para que Cloudflare nos dé la cookie de acceso
     
     matches = []
     page = 0
     while True:
-        url = f"{API_PREFIX}/unique-tournament/{tournament_id}/season/{season_id}/events/{endpoint}/{page}"
-        logger.debug(f"Navegando a JSON: {url}")
+        url = f"{SOFASCORE_API_PREFIX}/unique-tournament/{tournament_id}/season/{season_id}/events/{endpoint}/{page}"
+        logger.debug(f"Consultando eventos Sofascore (pág {page}): {url}")
         
-        # Navegamos físicamente a la API para forzar el envío de cookies
-        driver.get(url)
-        driver.sleep(1.5) # Damos tiempo a que se dibuje el texto en pantalla
-        
-        # Extraemos el texto puro de la pantalla (Chrome suele envolver los JSON en <pre>)
-        text = driver.run_js("return document.body.innerText;")
-        
+        response = None
+        # Intentamos primero fetch en la sesión activa (rápido y con cookies válidas)
         try:
-            response = json.loads(text)
-        except json.JSONDecodeError:
-            logger.error(f"Sofascore devolvió texto no-JSON en pág {page}. Fin de paginación.")
+            response = driver.run_js(f"return fetch('{url}').then(r => r.json());")
+        except Exception:
+            pass
+
+        # Si fetch no devolvió dict, navegamos físicamente a la URL
+        if not isinstance(response, dict):
+            driver.get(url)
+            driver.sleep(1.5)
+            text = driver.run_js("return document.body.innerText;")
+            try:
+                response = json.loads(text)
+            except Exception:
+                logger.error(f"Sofascore devolvió texto no-JSON en pág {page}. Fin de paginación.")
+                break
+
+        if not isinstance(response, dict):
             break
-            
+
         if "error" in response:
             logger.error(f"Sofascore devolvió error en pág {page}: {response['error']}")
             break
@@ -64,19 +75,23 @@ def _fetch_paginated_events(driver, data):
         
     return matches
 
-# Parcheamos la función interna por si la llama para estadísticas
+
 def _botasaurus_single_fetch(url: str) -> dict:
+    clean_url = url.replace("https://api.sofascore.com", "https://www.sofascore.com")
     @browser(headless=False, block_images_and_css=False, output=None, create_error_logs=False, close_on_crash=True, wait_for_complete_page_load=False)
     def _fetch(driver, data):
         driver.get("https://www.sofascore.com")
         driver.sleep(3)
-        driver.get(url)
-        driver.sleep(1.5)
-        text = driver.run_js("return document.body.innerText;")
         try:
-            return json.loads(text)
+            return driver.run_js(f"return fetch('{clean_url}').then(r => r.json());")
         except Exception:
-            return {}
+            driver.get(clean_url)
+            driver.sleep(1.5)
+            text = driver.run_js("return document.body.innerText;")
+            try:
+                return json.loads(text)
+            except Exception:
+                return {}
     return _fetch()
 
 sfc.utils.botasaurus_browser_get_json = _botasaurus_single_fetch
@@ -103,7 +118,6 @@ class SofascoreClient:
             "endpoint": "last"
         })
         
-        # Seguro contra fallos del navegador
         if matches is None:
             matches = []
 

@@ -123,7 +123,7 @@ class SofascoreIngestionService:
                     home_team_id=home_id,
                     away_team_id=away_id,
                     league=league,                    
-                    season = year,
+                    season=year,
                     match_date=match_date,
                     venue=(raw.get("venue") or {}).get("name"),
                     status=status,
@@ -200,16 +200,18 @@ class SofascoreIngestionService:
         for raw in upcoming:
             ext_id = str(raw["id"])
             existing_match = await self.match_repo.get_by_external_id(ext_id, "sofascore")
+            match_date = datetime.fromtimestamp(raw["startTimestamp"], tz=timezone.utc)
 
             if existing_match:
+                if existing_match.match_date != match_date:
+                    existing_match.match_date = match_date
+                    logger.info("Fecha/hora actualizada para partido Sofascore {} ({})", ext_id, match_date)
                 matches_skipped += 1
                 match_ids.append(existing_match.id)
                 continue
 
             home_id = await self._resolve_or_create_team(raw["homeTeam"], known_teams)
             away_id = await self._resolve_or_create_team(raw["awayTeam"], known_teams)
-
-            match_date = datetime.fromtimestamp(raw["startTimestamp"], tz=timezone.utc)
 
             match_obj = Match(
                 external_id=ext_id,
