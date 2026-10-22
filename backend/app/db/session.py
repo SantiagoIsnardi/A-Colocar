@@ -16,8 +16,10 @@ from app.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.debug,    # imprime las queries SQL solo en modo debug
-    pool_pre_ping=True,     # valida la conexión antes de usarla, evita conexiones muertas
+    echo=settings.debug,     # imprime las queries SQL solo en modo debug
+    pool_pre_ping=True,      # valida la conexión antes de usarla, reconecta si Neon se durmió
+    pool_recycle=300,        # recicla conexiones cada 5 minutos (evita sockets cerrados por inactividad)
+    pool_timeout=30,         # margen de espera (30s) para que Neon despierte el cómputo sin timeout
     future=True,
 )
 
