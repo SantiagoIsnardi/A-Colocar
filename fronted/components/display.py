@@ -209,7 +209,7 @@ def render_match_context(context: dict) -> None:
     st.divider()
 
     # 2. Forma y Motivación
-    st.markdown("##### 📊 Estado de Forma y Tendencia")
+    st.markdown("#### Estado de Forma y Tendencia")
     c_f1, c_f2 = st.columns(2)
 
     home_form = context.get("home_form") or {}
@@ -283,7 +283,7 @@ def render_match_context(context: dict) -> None:
     st.divider()
 
     # 3. Historial H2H
-    st.markdown("##### ⚔️ Historial Directo (Enfrentamientos en esta sede)")
+    st.markdown("##### Historial Directo (Enfrentamientos en esta sede)")
     h2h = context.get("head_to_head") or {}
     h2h_sample = h2h.get("sample_size", 0)
     h2h_suff = h2h.get("sufficient", False)
@@ -304,7 +304,7 @@ def render_match_context(context: dict) -> None:
             st.metric("Goles promedio", f"{g_home:.1f} - {g_away:.1f}", help="Promedio de goles por partido entre ambos en esta sede.")
 
         if not h2h_suff:
-            st.caption(f"⚠️ Muestra reducida: Basado únicamente en {h2h_sample} enfrentamiento(s).")
+            st.caption(f"Muestra reducida: Basado únicamente en {h2h_sample} enfrentamiento(s).")
         else:
             win_rate = h2h.get("home_win_rate", 0.0) * 100
             st.caption(f"Efectividad local en esta sede: {win_rate:.0f}% de victorias en {h2h_sample} partidos.")
@@ -312,7 +312,7 @@ def render_match_context(context: dict) -> None:
     st.divider()
 
     # 4. Perfil del Árbitro
-    st.markdown("##### ⚖️ Perfil Arbitral")
+    st.markdown("##### Perfil Arbitral")
     ref = context.get("referee_profile") or {}
     ref_available = ref.get("available", False)
     ref_name = ref.get("referee_name")
@@ -345,3 +345,15 @@ def render_match_context(context: dict) -> None:
             )
         ref_sample = ref.get("sample_size", 0)
         st.caption(f"Estadísticas calculadas sobre {ref_sample} partidos dirigidos registrados.")
+
+        st.markdown(
+            """
+            <style>
+            /* Achica el texto principal de st.metric para evitar que se corte */
+            [data-testid="stMetricValue"] {
+                font-size: 1.4rem !important; 
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
