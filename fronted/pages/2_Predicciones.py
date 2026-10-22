@@ -14,7 +14,17 @@ import plotly.graph_objects as go
 import streamlit as st
 from components import api_client
 from components.theme import inject_background
-from fronted.components.display import render_match_context, render_result
+
+import sys
+from pathlib import Path
+
+# 1. Forzamos a Python a encontrar la carpeta raíz del frontend
+current_dir = Path(__file__).parent
+fronted_dir = current_dir.parent
+sys.path.append(str(fronted_dir))
+
+# 2. Ahora sí importamos los componentes sin que la nube tire error
+from components.display import render_match_context, render_result
 
 st.set_page_config(page_title="Predicciones", layout="wide")
 inject_background()
