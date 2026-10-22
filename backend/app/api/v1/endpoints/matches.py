@@ -10,11 +10,11 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 
 @router.get("/by-date")
 async def get_matches_by_date(
-    date: str | None = Query(default=None, description="DD-MM-YYYY, default hoy (horario Argentina)"),
+    date: str | None = Query(default=None, description="YYYY-MM-DD, default hoy (horario Argentina)"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Partidos programados/jugados en una fecha dada, en horario Argentina."""
-    from datetime import date as date_cls, datetime, timedelta
+    from datetime import date as date_cls, datetime, timedelta, timezone
     from zoneinfo import ZoneInfo
 
     from sqlalchemy import select
@@ -26,11 +26,11 @@ async def get_matches_by_date(
     target = date_cls.fromisoformat(date) if date else datetime.now(ARG_TZ).date()
 
     # Límites del día en horario argentino, convertidos a UTC para filtrar
-    # contra match_date (que se guarda en UTC).
+    # contra match_date (que se guarda en UTC con timezone).
     start_arg = datetime.combine(target, datetime.min.time(), tzinfo=ARG_TZ)
     end_arg = start_arg + timedelta(days=1)
-    start_utc = start_arg.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
-    end_utc = end_arg.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+    start_utc = start_arg.astimezone(ZoneInfo("UTC"))
+    end_utc = end_arg.astimezone(ZoneInfo("UTC"))
 
     repo = MatchRepository(db)
     matches = await repo.get_by_date_range(start_utc, end_utc)
@@ -49,8 +49,9 @@ async def get_matches_by_date(
                 "away_team": team_names.get(m.away_team_id, f"#{m.away_team_id}"),
                 "league": m.league,
                 "match_date_utc": m.match_date.isoformat(),
-                "match_time_arg": m.match_date.replace(tzinfo=ZoneInfo("UTC"))
-                    .astimezone(ARG_TZ).strftime("%H:%M"),
+                "match_time_arg": (
+                    m.match_date if m.match_date.tzinfo else m.match_date.replace(tzinfo=timezone.utc)
+                ).astimezone(ARG_TZ).strftime("%H:%M"),
                 "status": m.status,
                 "home_score": m.home_score,
                 "away_score": m.away_score,

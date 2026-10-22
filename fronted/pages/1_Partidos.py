@@ -5,8 +5,9 @@ no aparece en el listado, ya sea futuro o pasado).
 """
 
 import sys
-from datetime import date
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -15,6 +16,8 @@ from components import api_client
 from components.theme import inject_background
 from components.display import render_result
 
+ARG_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
+
 st.set_page_config(page_title="Partidos", layout="wide")
 inject_background()
 
@@ -22,36 +25,43 @@ st.title("Partidos")
 
 STATUS_BADGES = {
     "SCHEDULED": "Próximo",
+    "scheduled": "Próximo",
+    "TIMED": "Próximo",
     "NS": "Próximo",
     "FINISHED": "Finalizado",
+    "finished": "Finalizado",
     "FT": "Finalizado",
     "IN_PLAY": "🔴 En Vivo",
+    "live": "🔴 En Vivo",
 }
 
 _sync_info = api_client.get_last_sync()
 if _sync_info:
-    _last_official = _sync_info.get("football_data") or _sync_info.get("api_football") or _sync_info.get("sofascore")
-    if _last_official:
-        from datetime import datetime, timezone
-
-        _last = datetime.fromisoformat(_last_official)
-        _delta = datetime.now(timezone.utc) - _last
-        _horas = _delta.total_seconds() / 3600
-
-        if _horas < 1:
-            _texto = f"hace {int(_delta.total_seconds() / 60)} min"
-        elif _horas < 48:
-            _texto = f"hace {int(_horas)} hs"
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        _fd_last = _sync_info.get("football_data")
+        if _fd_last:
+            _delta = datetime.now(timezone.utc) - datetime.fromisoformat(_fd_last)
+            _hs = int(_delta.total_seconds() / 3600)
+            _txt = f"{int(_delta.total_seconds() / 60)} min" if _hs < 1 else f"{_hs} hs"
+            st.caption(f"🇪🇺 **Ligas Europeas:** sincronizado hace {_txt}")
         else:
-            _texto = f"hace {int(_horas / 24)} días"
-
-        _alerta = _horas > 30
-        if _alerta:
-            st.warning(f"El fixture no se sincroniza hace {_texto} — puede que los partidos/resultados no estén al día.")
+            st.caption("🇪🇺 **Ligas Europeas:** sin datos")
+    with col_s2:
+        _sofa_last = _sync_info.get("sofascore") or _sync_info.get("api_football")
+        if _sofa_last:
+            _delta = datetime.now(timezone.utc) - datetime.fromisoformat(_sofa_last)
+            _dias = int(_delta.total_seconds() / 86400)
+            if _dias > 1:
+                st.caption(f"🌎 **Sudamérica (Sofascore/API):** última ingesta hace {_dias} días (requiere scraper local)")
+            else:
+                _hs = int(_delta.total_seconds() / 3600)
+                st.caption(f"🌎 **Sudamérica (Sofascore/API):** hace {_hs} hs")
         else:
-            st.caption(f"Sincronización de datos actualizada {_texto}")
+            st.caption("🌎 **Sudamérica (Sofascore/API):** sin datos")
 
-fecha = st.date_input("Fecha", value=date.today())
+# Usar horario de Argentina para que en Streamlit Cloud (UTC) no se adelante el día a las 21:00 ART
+fecha = st.date_input("Fecha", value=datetime.now(ARG_TZ).date())
 
 resultado = api_client.get_matches_by_date(fecha.isoformat())
 
@@ -83,7 +93,7 @@ if resultado:
                 "ID": p["id"],
                 "Hora": p["match_time_arg"],
                 "Local": p["home_team"],
-                "Resultado / Vs": f"{p.get('home_score', '-')} - {p.get('away_score', '-')}" if p["status"] in ["FINISHED", "FT"] else "vs",
+                "Resultado / Vs": f"{p.get('home_score', '-')} - {p.get('away_score', '-')}" if p["status"] in ["FINISHED", "finished", "FT"] else "vs",
                 "Visitante": p["away_team"],
                 "Liga": p["league"],
                 "Estado": STATUS_BADGES.get(p["status"], p["status"]),
@@ -146,7 +156,7 @@ if nombre and len(nombre) >= 2:
                     "ID": p["id"],
                     "Fecha": p["match_date"][:10],
                     "Local": p["home_team"],
-                    "Resultado / Vs": f"{p.get('home_score', '-')} - {p.get('away_score', '-')}" if p["status"] in ["FINISHED", "FT"] else "vs",
+                    "Resultado / Vs": f"{p.get('home_score', '-')} - {p.get('away_score', '-')}" if p["status"] in ["FINISHED", "finished", "FT"] else "vs",
                     "Visitante": p["away_team"],
                     "Liga": p["league"],
                     "Estado": STATUS_BADGES.get(p["status"], p["status"]),
