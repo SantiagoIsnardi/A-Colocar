@@ -1,9 +1,11 @@
+import unicodedata
 from datetime import timedelta
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.match import Match, MatchStatus
+from app.db.models.team import Team
 
 # Orden de preferencia de fuentes al deduplicar: menor número = mayor prioridad.
 # football_data es la fuente oficial para ligas europeas.
@@ -15,41 +17,125 @@ _SOURCE_PRIORITY: dict[str, int] = {
 }
 
 
-def _dedup_matches(matches: list[Match]) -> list[Match]:
+def _normalize(name: str) -> str:
+    """
+    Normaliza un nombre de equipo para comparación fuzzy:
+    - Minúsculas
+    - Sin acentos (NFD → solo ASCII)
+    - Sin espacios extra
+    Ejemplo: "FC Augsburg" → "fc augsburg", "Borussia M'gladbach" → "borussia mgladbach"
+    """
+    name = name.strip().lower()
+    name = unicodedata.normalize("NFD", name)
+    name = "".join(c for c in name if unicodedata.category(c) != "Mn")
+    # Eliminar caracteres no alfanuméricos excepto espacios
+    name = "".join(c if c.isalnum() or c == " " else "" for c in name)
+    return " ".join(name.split())
+
+
+def _dedup_matches(
+    matches: list[Match],
+    team_names: dict[int, str] | None = None,
+) -> list[Match]:
     """
     Elimina partidos duplicados cross-source de una lista en memoria.
 
-    Un partido está duplicado cuando dos registros comparten el mismo
-    (home_team_id, away_team_id, día UTC) pero provienen de distintos
-    sources (ej: football_data + sofascore para Premier League).
+    Estrategia de clave (en orden de prioridad):
+    1. (home_team_id, away_team_id, día_UTC)  → clave exacta por ID
+    2. (home_name_norm, away_name_norm, día_UTC) → clave por nombre normalizado,
+       para cuando sofascore y football_data tienen distintos team_ids para el
+       mismo equipo real (ej: Bundesliga).
 
     Se conserva el registro de mayor prioridad según _SOURCE_PRIORITY
-    (menor número = mayor prioridad). En caso de empate de prioridad,
-    se conserva el de menor id (primero insertado).
+    (menor número = mayor prioridad). En empate de prioridad, se conserva
+    el de menor id (primero insertado).
+
+    Args:
+        matches: lista de Match de la BD.
+        team_names: dict {team_id: nombre} para hacer dedup por nombre.
+                    Si es None, solo se usa la clave por ID.
     """
-    seen: dict[tuple, Match] = {}
+    seen_by_id: dict[tuple, Match] = {}
+    seen_by_name: dict[tuple, Match] = {}
+
+    def _priority(m: Match) -> int:
+        return _SOURCE_PRIORITY.get(m.source, 50)
+
+    def _keep(candidate: Match, existing: Match) -> bool:
+        """True si candidate debe reemplazar a existing."""
+        p_new = _priority(candidate)
+        p_old = _priority(existing)
+        return p_new < p_old or (p_new == p_old and candidate.id < existing.id)
+
     for m in matches:
-        # Clave de partido físico: mismos equipos + mismo día UTC
         day_key = m.match_date.date() if m.match_date else None
-        key = (m.home_team_id, m.away_team_id, day_key)
 
-        if key not in seen:
-            seen[key] = m
-        else:
-            existing = seen[key]
-            prio_new = _SOURCE_PRIORITY.get(m.source, 50)
-            prio_old = _SOURCE_PRIORITY.get(existing.source, 50)
-            # Reemplazar si la nueva fuente tiene mayor prioridad (número menor)
-            if prio_new < prio_old or (prio_new == prio_old and m.id < existing.id):
-                seen[key] = m
+        # Clave 1: por team_id exacto
+        id_key = (m.home_team_id, m.away_team_id, day_key)
+        if id_key not in seen_by_id:
+            seen_by_id[id_key] = m
+        elif _keep(m, seen_by_id[id_key]):
+            seen_by_id[id_key] = m
 
-    # Restaurar el orden por match_date (el dict puede reordenar)
-    return sorted(seen.values(), key=lambda m: m.match_date)
+        # Clave 2: por nombre normalizado (fallback para IDs distintos)
+        if team_names:
+            home_norm = _normalize(team_names.get(m.home_team_id, ""))
+            away_norm = _normalize(team_names.get(m.away_team_id, ""))
+            if home_norm and away_norm:
+                name_key = (home_norm, away_norm, day_key)
+                if name_key not in seen_by_name:
+                    seen_by_name[name_key] = m
+                elif _keep(m, seen_by_name[name_key]):
+                    seen_by_name[name_key] = m
+
+    # Unir ambos conjuntos: si un partido ganó en seen_by_name, usarlo
+    # (puede tener mejor prioridad que el que quedó en seen_by_id)
+    final: dict[int, Match] = {}
+    for m in seen_by_id.values():
+        final[m.id] = m
+    if team_names:
+        for m in seen_by_name.values():
+            # El partido del seen_by_name "gana" si su prioridad es mayor que
+            # cualquier partido con el mismo nombre ya en final
+            final[m.id] = m
+
+    # Ahora eliminar pares que comparten nombre (el de mayor prioridad gana)
+    if team_names:
+        name_winner: dict[tuple, Match] = {}
+        for m in final.values():
+            day_key = m.match_date.date() if m.match_date else None
+            home_norm = _normalize(team_names.get(m.home_team_id, ""))
+            away_norm = _normalize(team_names.get(m.away_team_id, ""))
+            if not home_norm or not away_norm:
+                continue
+            name_key = (home_norm, away_norm, day_key)
+            if name_key not in name_winner:
+                name_winner[name_key] = m
+            elif _keep(m, name_winner[name_key]):
+                name_winner[name_key] = m
+
+        # Construir set de IDs ganadores
+        winner_ids = {m.id for m in name_winner.values()}
+        result = [m for m in final.values() if m.id in winner_ids]
+    else:
+        result = list(final.values())
+
+    return sorted(result, key=lambda m: m.match_date)
 
 
 class MatchRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def _load_team_names(self, match_list: list[Match]) -> dict[int, str]:
+        """Carga nombres de equipos para una lista de partidos (para dedup por nombre)."""
+        team_ids = {m.home_team_id for m in match_list} | {m.away_team_id for m in match_list}
+        if not team_ids:
+            return {}
+        result = await self.session.execute(
+            select(Team.id, Team.name).where(Team.id.in_(team_ids))
+        )
+        return dict(result.all())
 
     async def get_by_external_id(self, external_id: str, source: str) -> Match | None:
         result = await self.session.execute(
@@ -101,8 +187,9 @@ class MatchRepository:
         if status:
             stmt = stmt.where(Match.status == status)
         result = await self.session.execute(stmt)
-        # Deduplicar también aquí para consistencia en búsqueda por equipo
-        return _dedup_matches(list(result.scalars().all()))
+        raw = list(result.scalars().all())
+        team_names = await self._load_team_names(raw)
+        return _dedup_matches(raw, team_names)
 
     async def get_by_date_range(self, start, end) -> list[Match]:
         """
@@ -110,8 +197,9 @@ class MatchRepository:
 
         Los duplicados cross-source se eliminan en memoria conservando siempre
         el registro de mayor prioridad (football_data > sofascore > api_football).
-        Esto resuelve partidos europeos ingresados dos veces (por football_data
-        Y por sofascore) sin necesidad de eliminar registros históricos de la BD.
+        Funciona incluso cuando sofascore y football_data usan distintos team_ids
+        para el mismo equipo real (ej: equipos de Bundesliga), usando nombre
+        normalizado como clave de fallback.
         """
         stmt = (
             select(Match)
@@ -120,7 +208,8 @@ class MatchRepository:
         )
         result = await self.session.execute(stmt)
         raw = list(result.scalars().all())
-        return _dedup_matches(raw)
+        team_names = await self._load_team_names(raw)
+        return _dedup_matches(raw, team_names)
 
     async def get_scheduled(self) -> list[Match]:
         """Todos los partidos con status 'scheduled', de cualquier fuente."""
