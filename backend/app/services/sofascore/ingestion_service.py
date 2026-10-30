@@ -117,21 +117,38 @@ class SofascoreIngestionService:
                 )
                 match_date = datetime.fromtimestamp(raw["startTimestamp"], tz=timezone.utc)
 
-                match_obj = Match(
-                    external_id=ext_id,
-                    source="sofascore",
+                # Verificar duplicado cross-source antes de insertar (ej: partido europeo
+                # que ya existe en football_data pero también aparece en Sofascore).
+                cross_source_dup = await self.match_repo.get_by_team_and_date(
                     home_team_id=home_id,
                     away_team_id=away_id,
-                    league=league,                    
-                    season=year,
-                    match_date=match_date,
-                    venue=(raw.get("venue") or {}).get("name"),
-                    status=status,
-                    home_score=raw.get("homeScore", {}).get("current"),
-                    away_score=raw.get("awayScore", {}).get("current"),
+                    match_date_utc=match_date,
                 )
-                match_obj = await self.match_repo.create(match_obj)
-                matches_created += 1
+                if cross_source_dup:
+                    logger.debug(
+                        "Partido duplicado cross-source omitido (ingest_league_season): {} el {} "
+                        "(ya existe como id={} source={})",
+                        raw.get("homeTeam", {}).get("name"), match_date.date(),
+                        cross_source_dup.id, cross_source_dup.source,
+                    )
+                    matches_skipped += 1
+                    match_obj = cross_source_dup
+                else:
+                    match_obj = Match(
+                        external_id=ext_id,
+                        source="sofascore",
+                        home_team_id=home_id,
+                        away_team_id=away_id,
+                        league=league,
+                        season=year,
+                        match_date=match_date,
+                        venue=(raw.get("venue") or {}).get("name"),
+                        status=status,
+                        home_score=raw.get("homeScore", {}).get("current"),
+                        away_score=raw.get("awayScore", {}).get("current"),
+                    )
+                    match_obj = await self.match_repo.create(match_obj)
+                    matches_created += 1
 
             if with_statistics:
                 already_has_stats = await self.stats_repo.get_by_match(match_obj.id)
@@ -212,6 +229,24 @@ class SofascoreIngestionService:
 
             home_id = await self._resolve_or_create_team(raw["homeTeam"], known_teams)
             away_id = await self._resolve_or_create_team(raw["awayTeam"], known_teams)
+
+            # Verificar si ya existe el mismo partido físico en otra fuente (ej: football_data).
+            # Esto evita crear duplicados cross-source para ligas europeas.
+            cross_source_dup = await self.match_repo.get_by_team_and_date(
+                home_team_id=home_id,
+                away_team_id=away_id,
+                match_date_utc=match_date,
+            )
+            if cross_source_dup:
+                logger.debug(
+                    "Partido duplicado cross-source omitido: {} vs {} el {} "
+                    "(ya existe como id={} source={})",
+                    raw["homeTeam"]["name"], raw["awayTeam"]["name"],
+                    match_date.date(), cross_source_dup.id, cross_source_dup.source,
+                )
+                matches_skipped += 1
+                match_ids.append(cross_source_dup.id)
+                continue
 
             match_obj = Match(
                 external_id=ext_id,
