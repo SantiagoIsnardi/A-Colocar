@@ -37,10 +37,11 @@ with tab1:
         # Info del partido
         match_info = api_client.get_match(match_id)
         if match_info:
+            home = match_info.get("home_team") or f"Equipo #{match_info.get('home_team_id')}"
+            away = match_info.get("away_team") or f"Equipo #{match_info.get('away_team_id')}"
             st.caption(
-                f"⚽ **{match_info.get('league')}** &nbsp;·&nbsp; "
-                f"Temporada: {match_info.get('season')} &nbsp;·&nbsp; "
-                f"Estado: {match_info.get('status')}"
+                f"**{home} vs {away}** · {match_info.get('league')} · "
+                f"Temporada {match_info.get('season')} · Estado: {match_info.get('status')}"
             )
 
         st.divider()

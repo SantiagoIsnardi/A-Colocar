@@ -127,6 +127,7 @@ async def get_match(match_id: int, db: AsyncSession = Depends(get_db)) -> dict:
     from sqlalchemy import select
 
     from app.db.models.match import Match
+    from app.db.models.team import Team
 
     result = await db.execute(select(Match).where(Match.id == match_id))
     match = result.scalar_one_or_none()
@@ -134,10 +135,18 @@ async def get_match(match_id: int, db: AsyncSession = Depends(get_db)) -> dict:
     if not match:
         raise DataNotFoundError(f"Partido {match_id} no encontrado")
 
+    # Cargar nombres de los equipos involucrados
+    teams_result = await db.execute(
+        select(Team.id, Team.name).where(Team.id.in_([match.home_team_id, match.away_team_id]))
+    )
+    team_names = dict(teams_result.all())
+
     return {
         "id": match.id,
         "home_team_id": match.home_team_id,
         "away_team_id": match.away_team_id,
+        "home_team": team_names.get(match.home_team_id, f"Equipo {match.home_team_id}"),
+        "away_team": team_names.get(match.away_team_id, f"Equipo {match.away_team_id}"),
         "league": match.league,
         "season": match.season,
         "match_date": match.match_date.isoformat(),

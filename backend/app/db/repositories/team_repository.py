@@ -1,7 +1,15 @@
-from sqlalchemy import select
+import unicodedata
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.team import Team
+
+
+def _strip_accents(text: str) -> str:
+    """Elimina acentos y tildes para comparación robusta: 'Vélez' -> 'Velez'."""
+    text = unicodedata.normalize("NFD", text)
+    return "".join(c for c in text if unicodedata.category(c) != "Mn")
 
 
 class TeamRepository:
@@ -19,10 +27,38 @@ class TeamRepository:
         return result.scalar_one_or_none()
 
     async def search_by_name(self, name: str, limit: int = 10) -> list[Team]:
-        result = await self.session.execute(
-            select(Team).where(Team.name.ilike(f"%{name}%")).limit(limit)
-        )
-        return list(result.scalars().all())
+        """
+        Búsqueda insensible a mayúsculas y acentos (unaccent).
+        Permite que 'velez' encuentre 'Vélez Sarsfield', 'atletico' encuentre 'Atlético', etc.
+        """
+        clean = _strip_accents(name.strip())
+        try:
+            stmt = (
+                select(Team)
+                .where(
+                    or_(
+                        func.unaccent(Team.name).ilike(f"%{clean}%"),
+                        func.unaccent(func.coalesce(Team.short_name, "")).ilike(f"%{clean}%"),
+                    )
+                )
+                .limit(limit)
+            )
+            result = await self.session.execute(stmt)
+            return list(result.scalars().all())
+        except Exception:
+            # Fallback en caso de que unaccent no esté disponible en algún entorno local
+            stmt = (
+                select(Team)
+                .where(
+                    or_(
+                        Team.name.ilike(f"%{name}%"),
+                        Team.short_name.ilike(f"%{name}%"),
+                    )
+                )
+                .limit(limit)
+            )
+            result = await self.session.execute(stmt)
+            return list(result.scalars().all())
 
     async def create(self, team: Team) -> Team:
         self.session.add(team)

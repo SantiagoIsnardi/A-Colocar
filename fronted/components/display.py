@@ -167,10 +167,10 @@ def _format_form_score(score: float) -> tuple[str, int]:
 
 def _format_trend_score(score: float) -> str:
     if score >= 0.55:
-        return "📈 En alza (Mejorando racha)"
+        return "En alza (Mejorando racha)"
     elif score <= 0.45:
-        return "📉 En declive (Bajo rendimiento reciente)"
-    return "➡️ Rendimiento estable"
+        return "En declive (Bajo rendimiento reciente)"
+    return "Rendimiento estable"
 
 
 def render_match_context(context: dict) -> None:
@@ -189,7 +189,7 @@ def render_match_context(context: dict) -> None:
     home_label, home_diff = _format_attack_multiplier(home_mult)
     away_label, away_diff = _format_attack_multiplier(away_mult)
 
-    st.markdown("##### ⚡ Multiplicador de Ataque (Poder Ofensivo)")
+    st.markdown("##### Multiplicador de Ataque (Poder Ofensivo)")
     c_m1, c_m2 = st.columns(2)
     with c_m1:
         st.metric(
@@ -242,9 +242,9 @@ def render_match_context(context: dict) -> None:
 
         # Indicador de confianza amigable
         if h_suff:
-            st.markdown(f"🟢 **Confianza Alta** `(Basado en {h_sample} partidos)`")
+            st.markdown(f"**Confianza Alta** `(Basado en {h_sample} partidos)`")
         else:
-            st.markdown(f"🟡 **Confianza Limitada** `(Solo {h_sample} partido{'s' if h_sample != 1 else ''} evaluado{'s' if h_sample != 1 else ''})`")
+            st.markdown(f"**Confianza Limitada** `(Solo {h_sample} partido{'s' if h_sample != 1 else ''} evaluado{'s' if h_sample != 1 else ''})`")
 
     away_form = context.get("away_form") or {}
     away_mot = context.get("away_motivation") or {}
@@ -276,9 +276,9 @@ def render_match_context(context: dict) -> None:
 
         # Indicador de confianza amigable
         if a_suff:
-            st.markdown(f"🟢 **Confianza Alta** `(Basado en {a_sample} partidos)`")
+            st.markdown(f"**Confianza Alta** `(Basado en {a_sample} partidos)`")
         else:
-            st.markdown(f"🟡 **Confianza Limitada** `(Solo {a_sample} partido{'s' if a_sample != 1 else ''} evaluado{'s' if a_sample != 1 else ''})`")
+            st.markdown(f"**Confianza Limitada** `(Solo {a_sample} partido{'s' if a_sample != 1 else ''} evaluado{'s' if a_sample != 1 else ''})`")
 
     st.divider()
 
@@ -289,7 +289,7 @@ def render_match_context(context: dict) -> None:
     h2h_suff = h2h.get("sufficient", False)
 
     if h2h_sample == 0 or (not h2h_suff and h2h_sample < 2):
-        st.info("ℹ️ Sin historial directo registrado entre ambos equipos en esta sede.")
+        st.info("Sin historial directo registrado entre ambos equipos en esta sede.")
     else:
         c1, c2, c3, c4 = st.columns(4)
         with c1:
@@ -323,9 +323,9 @@ def render_match_context(context: dict) -> None:
 
     if not ref_available:
         if ref_name:
-            st.info(f"ℹ️ Árbitro designado: **{ref_name}** (sin estadísticas históricas suficientes en la base de datos).")
+            st.info(f"Árbitro designado: **{ref_name}** (sin estadísticas históricas suficientes en la base de datos).")
         else:
-            st.info("ℹ️ Árbitro por confirmar.")
+            st.info("Árbitro por confirmar.")
     else:
         st.markdown(f"**Árbitro principal:** `{ref_name}`")
         rc1, rc2, rc3 = st.columns(3)

@@ -176,11 +176,24 @@ class MatchRepository:
         self,
         team_id: int,
         status: MatchStatus | None = None,
-        limit: int = 20,
+        limit: int = 30,
     ) -> list[Match]:
+        # Unificar IDs de equipo si existe duplicado por fuente en la tabla teams (ej: FC Augsburg)
+        team = await self.session.get(Team, team_id)
+        team_ids = {team_id}
+        if team:
+            try:
+                norm_target = _normalize(team.name)
+                all_teams_res = await self.session.execute(select(Team.id, Team.name))
+                for t_id, t_name in all_teams_res.all():
+                    if _normalize(t_name) == norm_target:
+                        team_ids.add(t_id)
+            except Exception:
+                pass
+
         stmt = (
             select(Match)
-            .where(or_(Match.home_team_id == team_id, Match.away_team_id == team_id))
+            .where(or_(Match.home_team_id.in_(team_ids), Match.away_team_id.in_(team_ids)))
             .order_by(Match.match_date.desc())
             .limit(limit)
         )
