@@ -36,6 +36,7 @@ def _normalize(name: str) -> str:
 def _dedup_matches(
     matches: list[Match],
     team_names: dict[int, str] | None = None,
+    reverse: bool = False,
 ) -> list[Match]:
     """
     Elimina partidos duplicados cross-source de una lista en memoria.
@@ -120,7 +121,7 @@ def _dedup_matches(
     else:
         result = list(final.values())
 
-    return sorted(result, key=lambda m: m.match_date)
+    return sorted(result, key=lambda m: m.match_date, reverse=reverse)
 
 
 class MatchRepository:
@@ -202,7 +203,7 @@ class MatchRepository:
         result = await self.session.execute(stmt)
         raw = list(result.scalars().all())
         team_names = await self._load_team_names(raw)
-        return _dedup_matches(raw, team_names)
+        return _dedup_matches(raw, team_names, reverse=True)
 
     async def get_by_date_range(self, start, end) -> list[Match]:
         """

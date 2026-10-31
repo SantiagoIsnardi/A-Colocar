@@ -1,6 +1,6 @@
 """
 Página de Partidos: muestra los partidos del día por defecto, con opción
-de cambiar de fecha o buscar un partido puntual por su match_id (por si
+de cambiar de fecha o buscar un partido puntual por su equipo (por si
 no aparece en el listado, ya sea futuro o pasado).
 """
 
@@ -14,7 +14,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 import streamlit as st
 from components import api_client
 from components.theme import inject_background
-from components.display import render_result
 
 ARG_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
@@ -31,8 +30,8 @@ STATUS_BADGES = {
     "FINISHED": "Finalizado",
     "finished": "Finalizado",
     "FT": "Finalizado",
-    "IN_PLAY": "🔴 En Vivo",
-    "live": "🔴 En Vivo",
+    "IN_PLAY": "En Vivo",
+    "live": "En Vivo",
 }
 
 _sync_info = api_client.get_last_sync()
@@ -44,21 +43,21 @@ if _sync_info:
             _delta = datetime.now(timezone.utc) - datetime.fromisoformat(_fd_last)
             _hs = int(_delta.total_seconds() / 3600)
             _txt = f"{int(_delta.total_seconds() / 60)} min" if _hs < 1 else f"{_hs} hs"
-            st.caption(f"🇪🇺 **Ligas Europeas:** sincronizado hace {_txt}")
+            st.caption(f"**Ligas Europeas:** sincronizado hace {_txt}")
         else:
-            st.caption("🇪🇺 **Ligas Europeas:** sin datos")
+            st.caption("**Ligas Europeas:** sin datos")
     with col_s2:
         _sofa_last = _sync_info.get("sofascore") or _sync_info.get("api_football")
         if _sofa_last:
             _delta = datetime.now(timezone.utc) - datetime.fromisoformat(_sofa_last)
             _dias = int(_delta.total_seconds() / 86400)
             if _dias > 1:
-                st.caption(f"🌎 **Sudamérica (Sofascore/API):** última ingesta hace {_dias} días (requiere scraper local)")
+                st.caption(f"**Sudamérica (Sofascore/API):** última ingesta hace {_dias} días (requiere scraper local)")
             else:
                 _hs = int(_delta.total_seconds() / 3600)
-                st.caption(f"🌎 **Sudamérica (Sofascore/API):** hace {_hs} hs")
+                st.caption(f"**Sudamérica (Sofascore/API):** hace {_hs} hs")
         else:
-            st.caption("🌎 **Sudamérica (Sofascore/API):** sin datos")
+            st.caption("**Sudamérica (Sofascore/API):** sin datos")
 
 # Usar horario de Argentina para que en Streamlit Cloud (UTC) no se adelante el día a las 21:00 ART
 fecha = st.date_input("Fecha", value=datetime.now(ARG_TZ).date())
@@ -72,7 +71,7 @@ if resultado:
 
         # Selector de partido rápido para ir directamente a Predicciones o Value Bets
         opciones_partidos = {
-            f"[{p['id']}] {p['match_time_arg']} hs | {p['home_team']} vs {p['away_team']} ({p['league']}) - {STATUS_BADGES.get(p['status'], p['status'])}": p["id"]
+            f"{p['match_time_arg']} hs | {p['home_team']} vs {p['away_team']} ({p['league']}) — {STATUS_BADGES.get(p['status'], p['status'])}": p["id"]
             for p in partidos
         }
 
@@ -108,7 +107,7 @@ st.divider()
 st.markdown("### Buscar un partido puntual")
 st.caption("Si no aparece en la tabla de arriba (fecha futura o pasada), buscalo por nombre de equipo.")
 
-nombre = st.text_input("Nombre del equipo", placeholder="Ej: River, Barcelona, Boca...")
+nombre = st.text_input("Nombre del equipo", placeholder="Ej: River, Boca, Velez, Bayern...")
 
 if nombre and len(nombre) >= 2:
     resultado_busqueda = api_client.search_teams(nombre)
@@ -117,7 +116,13 @@ if nombre and len(nombre) >= 2:
     if not equipos:
         st.info(f"No se encontró ningún equipo que coincida con \"{nombre}\".")
     else:
-        opciones = {f"{e['name']} ({e['country'] or '—'})": e["id"] for e in equipos}
+        # Deduplicar por nombre
+        opciones: dict[str, int] = {}
+        for e in equipos:
+            lbl = f"{e['name']} ({e.get('country') or '—'})"
+            if lbl not in opciones:
+                opciones[lbl] = e["id"]
+
         seleccion = st.selectbox("Equipo encontrado", options=list(opciones.keys()))
         equipo_id = opciones[seleccion]
 
@@ -131,12 +136,60 @@ if nombre and len(nombre) >= 2:
         with col_b:
             st.write("")  # espaciador visual
 
-        partidos_equipo = api_client.get_matches_by_team(equipo_id, status=filtro_status)
+        partidos_equipo = api_client.get_matches_by_team(equipo_id, status=filtro_status, limit=30)
+        raw_matches = partidos_equipo.get("matches", []) if partidos_equipo else []
 
-        if partidos_equipo and partidos_equipo.get("matches"):
+        if raw_matches:
+            today_arg = datetime.now(ARG_TZ).date()
+
+            # Clasificar y ordenar: HOY primero, Futuros, Pasados
+            partidos_hoy = []
+            partidos_futuros = []
+            partidos_pasados = []
+
+            for p in raw_matches:
+                raw_d = p.get("match_date") or p.get("match_date_utc", "")
+                try:
+                    dt = datetime.fromisoformat(raw_d)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    dt_arg = dt.astimezone(ARG_TZ)
+                except Exception:
+                    dt_arg = datetime.now(ARG_TZ)
+
+                p["_dt_arg"] = dt_arg
+                m_date = dt_arg.date()
+
+                if m_date == today_arg:
+                    partidos_hoy.append(p)
+                elif m_date > today_arg:
+                    partidos_futuros.append(p)
+                else:
+                    partidos_pasados.append(p)
+
+            # Orden: hoy por hora asc, futuros por fecha asc, pasados por fecha desc
+            partidos_hoy = sorted(partidos_hoy, key=lambda p: p["_dt_arg"])
+            partidos_futuros = sorted(partidos_futuros, key=lambda p: p["_dt_arg"])
+            partidos_pasados = sorted(partidos_pasados, key=lambda p: p["_dt_arg"], reverse=True)
+
+            lista_ordenada = partidos_hoy + partidos_futuros + partidos_pasados
+
+            def _fmt_match_label(p):
+                dt_arg = p["_dt_arg"]
+                m_date = dt_arg.date()
+                raw_st = p.get("status", "")
+                if m_date == today_arg:
+                    st_txt = "En Vivo" if raw_st in ("live", "IN_PLAY") else ("Finalizado" if raw_st in ("finished", "FINISHED", "FT") else "Próximo")
+                    return f"HOY {dt_arg.strftime('%H:%M')} hs | {p['home_team']} vs {p['away_team']} ({p['league']}) — {st_txt}"
+                elif m_date > today_arg:
+                    return f"{dt_arg.strftime('%d/%m %H:%M')} hs | {p['home_team']} vs {p['away_team']} ({p['league']}) — Próximo"
+                else:
+                    st_txt = "Finalizado" if raw_st in ("finished", "FINISHED", "FT", "scheduled", "SCHEDULED", "TIMED", "NS") else STATUS_BADGES.get(raw_st, "Finalizado")
+                    return f"{dt_arg.strftime('%d/%m %H:%M')} hs | {p['home_team']} vs {p['away_team']} ({p['league']}) — {st_txt}"
+
             opciones_partidos_equipo = {
-                f"[{p['id']}] {p['match_date'][:10]} | {p['home_team']} vs {p['away_team']} ({p['league']}) - {STATUS_BADGES.get(p['status'], p['status'])}": p["id"]
-                for p in partidos_equipo["matches"]
+                _fmt_match_label(p): p["id"]
+                for p in lista_ordenada
             }
 
             col_sel_eq, col_btn1_eq, col_btn2_eq = st.columns([3, 1, 1])
@@ -154,14 +207,14 @@ if nombre and len(nombre) >= 2:
             tabla_equipo = [
                 {
                     "ID": p["id"],
-                    "Fecha": p["match_date"][:10],
+                    "Fecha": p["_dt_arg"].strftime("%d/%m/%Y %H:%M"),
                     "Local": p["home_team"],
                     "Resultado / Vs": f"{p.get('home_score', '-')} - {p.get('away_score', '-')}" if p["status"] in ["FINISHED", "finished", "FT"] else "vs",
                     "Visitante": p["away_team"],
                     "Liga": p["league"],
-                    "Estado": STATUS_BADGES.get(p["status"], p["status"]),
+                    "Estado": "Finalizado" if p["_dt_arg"].date() < today_arg and p["status"] in ["scheduled", "SCHEDULED", "TIMED", "NS"] else STATUS_BADGES.get(p["status"], p["status"]),
                 }
-                for p in partidos_equipo["matches"]
+                for p in lista_ordenada
             ]
             st.dataframe(tabla_equipo, use_container_width=True, hide_index=True)
         else:
