@@ -14,17 +14,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from components import api_client
 from components.theme import inject_background
-
-import sys
-from pathlib import Path
-
-# 1. Forzamos a Python a encontrar la carpeta raíz del frontend
-current_dir = Path(__file__).parent
-fronted_dir = current_dir.parent
-sys.path.append(str(fronted_dir))
-
-# 2. Ahora sí importamos los componentes sin que la nube tire error
 from components.display import render_match_context, render_result
+from components.match_selector import match_selector
 
 st.set_page_config(page_title="Predicciones", layout="wide")
 inject_background()
@@ -78,13 +69,20 @@ def _graficar_probabilidades(predicciones: list[dict], mercado_label: str):
     st.plotly_chart(fig, use_container_width=True)
 
 
-default_match_id = st.session_state.get("selected_match_id", None)
-match_id = st.number_input("Match ID", min_value=1, step=1, value=default_match_id)
+# ── Selector de partido ───────────────────────────────────────────────────────
+match_id = match_selector(key_prefix="pred")
 
 if match_id:
+    # Información del partido seleccionado
     match_info = api_client.get_match(match_id)
     if match_info:
-        st.caption(f"⚽ **{match_info.get('league')}** &nbsp;·&nbsp; Temporada: {match_info.get('season')} &nbsp;·&nbsp; Estado: {match_info.get('status')}")
+        st.caption(
+            f"⚽ **{match_info.get('league')}** &nbsp;·&nbsp; "
+            f"Temporada: {match_info.get('season')} &nbsp;·&nbsp; "
+            f"Estado: {match_info.get('status')}"
+        )
+
+    st.divider()
 
     mercado = st.selectbox(
         "Mercado",

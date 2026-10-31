@@ -101,8 +101,11 @@ def get_value_bets(match_id: int) -> dict | None:
     return _get(f"/value-bets/matches/{match_id}")
 
 
-def get_rankings(limit_per_market: int = 10) -> dict | None:
-    return _get("/rankings/markets", params={"limit_per_market": limit_per_market})
+def get_rankings(limit_per_market: int = 10, market: str | None = None) -> dict | None:
+    res = _get("/rankings/markets", params={"limit_per_market": limit_per_market})
+    if res and market and "markets" in res:
+        res["markets"] = {k: v for k, v in res["markets"].items() if k == market}
+    return res
 
 
 # ─── Análisis completo ─────────────────────────────────────────
@@ -119,13 +122,16 @@ def get_matches_by_date(date: str | None = None) -> dict | None:
     params = {"date": date} if date else None
     return _get("/matches/by-date", params=params)
 
+
 def get_match(match_id: int) -> dict | None:
     return _get(f"/matches/{match_id}")
+
 
 # ─── Calibración ───────────────────────────────────────────────
 def get_calibration_summary(model_version: str | None = None) -> dict | None:
     params = {"model_version": model_version} if model_version else None
     return _get("/calibration/summary", params=params)
+
 
 def search_teams(query: str, limit: int = 10) -> dict | None:
     return _get("/teams/search", params={"q": query, "limit": limit})
@@ -136,6 +142,7 @@ def get_matches_by_team(team_id: int, status: str | None = None, limit: int = 20
     if status:
         params["status"] = status
     return _get(f"/matches/team/{team_id}", params=params)
+
 
 def get_last_sync() -> dict | None:
     return _get("/matches/last-sync")

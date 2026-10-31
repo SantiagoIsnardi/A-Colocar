@@ -12,6 +12,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 import pandas as pd
 import streamlit as st
 from components import api_client
+from components.match_selector import match_selector
 
 st.set_page_config(page_title="Value Bets", layout="wide")
 st.title("Apuestas de Valor")
@@ -28,10 +29,21 @@ tab1, tab2 = st.tabs(["Por partido", "Ranking general"])
 
 with tab1:
     st.subheader("Value bets de un partido específico")
-    default_match_id = st.session_state.get("selected_match_id", None)
-    match_id = st.number_input("Match ID", min_value=1, step=1, value=default_match_id, key="vb_match_id")
+
+    # ── Selector de partido por nombre de equipo ──────────────────────────────
+    match_id = match_selector(key_prefix="vb")
 
     if match_id:
+        # Info del partido
+        match_info = api_client.get_match(match_id)
+        if match_info:
+            st.caption(
+                f"⚽ **{match_info.get('league')}** &nbsp;·&nbsp; "
+                f"Temporada: {match_info.get('season')} &nbsp;·&nbsp; "
+                f"Estado: {match_info.get('status')}"
+            )
+
+        st.divider()
         result = api_client.get_value_bets(match_id)
 
         if result and result.get("value_bets"):
@@ -48,6 +60,8 @@ with tab1:
             })
             if "Stake Kelly (%)" in df.columns:
                 df["Stake Kelly (%)"] = (df["Stake Kelly (%)"] * 100).round(2)
+            if "Mercado" in df.columns:
+                df["Mercado"] = df["Mercado"].map(lambda x: MERCADOS_LABEL.get(x, x))
 
             columnas = [c for c in ["Mercado", "Línea", "Lado", "Cuota", "Edge (%)", "Valor Esperado", "Stake Kelly (%)", "Estado"] if c in df.columns]
             st.dataframe(

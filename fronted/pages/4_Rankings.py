@@ -23,7 +23,13 @@ MERCADOS_LABEL = {
     "shots": "Tiros",
 }
 
-limite = st.slider("Cantidad máxima por mercado", min_value=5, max_value=50, value=10)
+limite = st.slider(
+    "Filtrar Top N oportunidades",
+    min_value=5,
+    max_value=50,
+    value=10,
+    help="Define cuántas predicciones se mostrarán como máximo en cada sección (Corners, Goles, Tarjetas) ordenadas de mayor a menor Ventaja (Edge)."
+)
 
 if st.button("🔍 Consultar ranking", use_container_width=True):
     resultado = api_client.get_rankings(limit_per_market=limite)
